@@ -1,1 +1,61 @@
-videos
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+.venv/
+venv/
+ENV/
+env/
+.python-version
+*.egg-info/
+dist/
+build/
+
+# UV
+uv.lock
+
+# Project specific
+cache/
+frames/
+output/
+videos/
+*.mp4
+*.MP4
+*.avi
+*.mov
+*.mkv
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Testing
+.pytest_cache/
+.coverage
+htmlcov/
+*.log
+.tox/
+.nox/
+
+# Jupyter
+*.ipynb_checkpoints
+.jupyter/
+
+# Environment
+.env
+.envrc
+
+# Documentation build
+docs/_build/
+docs/_static/
+docs/_templates/

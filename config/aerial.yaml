@@ -1,0 +1,56 @@
+# Configuration optimized for aerial/drone footage
+
+# Frame extraction settings
+frame_extraction:
+  fps: 2.0  # Lower FPS for slow aerial movements
+  height: 720
+  
+# Scoring weights - emphasize aesthetics and saliency for landscapes
+scoring:
+  weights:
+    sharpness: 0.2  # Less important for aerial
+    exposure: -0.15
+    aesthetics: 0.45  # More important for scenic shots
+    saliency: 0.2  # Higher weight for landscape matching
+  
+  # Aerial-specific prompts
+  saliency_prompts:
+    - "aerial landscape photography"
+    - "drone shot with beautiful scenery"
+    - "bird's eye view of landscape"
+    - "sweeping aerial vista"
+    - "dramatic aerial perspective"
+    - "golden hour aerial photography"
+
+# Temporal processing - longer windows for slow movements
+temporal:
+  smooth_window_seconds: 3.0  # Longer window for aerial footage
+  min_peak_distance_seconds: 6.0  # More separation for varied scenes
+  
+# Clip extraction - longer clips for aerial
+clips:
+  pre_roll_seconds: 1.5
+  post_roll_seconds: 3.0
+  video_codec: "libx264"
+  crf: 17  # Higher quality for landscapes
+  preset: "medium"  # Better compression for scenes with movement
+  stabilize: true  # Often needed for drone footage
+  
+# Diversity filtering - allow more similar shots for aerial
+diversity:
+  enabled: true
+  similarity_threshold: 0.10  # Slightly lower threshold
+  
+# Pipeline settings
+pipeline:
+  top_k: 7  # More clips for aerial compilation
+  use_cache: true
+  cleanup_frames: false
+  
+# Output settings
+output:
+  save_metadata: true
+  save_score_plot: true
+  save_contact_sheet: true
+  contact_sheet_columns: 3
+  contact_sheet_thumb_size: [426, 240]  # Wider aspect for landscapes

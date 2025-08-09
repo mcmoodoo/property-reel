@@ -1,0 +1,57 @@
+# Configuration optimized for interior/architectural shots
+
+# Frame extraction settings
+frame_extraction:
+  fps: 3.0  # Standard FPS for interior walkthroughs
+  height: 1080  # Higher resolution for architectural details
+  
+# Scoring weights - balance sharpness and exposure for interiors
+scoring:
+  weights:
+    sharpness: 0.35  # Important for architectural details
+    exposure: -0.25  # Critical for indoor lighting
+    aesthetics: 0.30
+    saliency: 0.10
+  
+  # Interior-specific prompts
+  saliency_prompts:
+    - "well-lit interior space"
+    - "architectural interior photography"
+    - "beautifully composed room"
+    - "professional real estate photo"
+    - "inviting indoor space"
+    - "interior design photography"
+    - "natural light in interior"
+
+# Temporal processing
+temporal:
+  smooth_window_seconds: 2.0
+  min_peak_distance_seconds: 3.0  # Closer peaks OK for room transitions
+  
+# Clip extraction
+clips:
+  pre_roll_seconds: 0.75  # Shorter pre-roll for interiors
+  post_roll_seconds: 1.5
+  video_codec: "libx264"
+  crf: 18
+  preset: "veryfast"
+  stabilize: false  # Usually not needed for interior shots
+  
+# Diversity filtering - ensure variety of rooms/angles
+diversity:
+  enabled: true
+  similarity_threshold: 0.15  # Higher threshold to avoid similar rooms
+  
+# Pipeline settings
+pipeline:
+  top_k: 5
+  use_cache: true
+  cleanup_frames: false
+  
+# Output settings
+output:
+  save_metadata: true
+  save_score_plot: true
+  save_contact_sheet: true
+  contact_sheet_columns: 4
+  contact_sheet_thumb_size: [320, 180]

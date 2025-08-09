@@ -1,0 +1,54 @@
+# Default configuration for best-shot extraction pipeline
+
+# Frame extraction settings
+frame_extraction:
+  fps: 3.0  # Frames per second to extract
+  height: 720  # Target height for frames (width scales proportionally)
+  
+# Scoring weights (should sum to 1.0 when considering absolute values)
+scoring:
+  weights:
+    sharpness: 0.3
+    exposure: -0.2  # Negative because it's a penalty
+    aesthetics: 0.4
+    saliency: 0.1
+  
+  # Saliency prompts (for general videos)
+  saliency_prompts:
+    - "a well-composed shot"
+    - "interesting subject in focus"
+    - "professional cinematography"
+    - "visually appealing scene"
+
+# Temporal processing
+temporal:
+  smooth_window_seconds: 2.0  # Window size for temporal smoothing
+  min_peak_distance_seconds: 4.0  # Minimum distance between peaks
+  
+# Clip extraction
+clips:
+  pre_roll_seconds: 1.0  # Seconds before peak to include
+  post_roll_seconds: 2.0  # Seconds after peak to include
+  video_codec: "libx264"
+  crf: 18  # Quality (lower = better, 18-23 recommended)
+  preset: "veryfast"  # Encoding speed preset
+  stabilize: false  # Apply video stabilization
+  
+# Diversity filtering
+diversity:
+  enabled: true
+  similarity_threshold: 0.12  # Maximum cosine distance for clips to be considered different
+  
+# Pipeline settings
+pipeline:
+  top_k: 5  # Number of top clips to extract (before diversity filtering)
+  use_cache: true  # Use cached CLIP embeddings
+  cleanup_frames: false  # Remove extracted frames after processing
+  
+# Output settings
+output:
+  save_metadata: true  # Save JSON metadata
+  save_score_plot: true  # Save score visualization
+  save_contact_sheet: true  # Save thumbnail grid
+  contact_sheet_columns: 4
+  contact_sheet_thumb_size: [320, 180]
