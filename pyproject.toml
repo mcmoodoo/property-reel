@@ -32,6 +32,10 @@ dev = [
     "black>=23.0.0",
     "ruff>=0.1.0",
     "ipython>=8.0.0",
+    "matplotlib>=3.7.0",  # For score visualization plots
+]
+viz = [
+    "matplotlib>=3.7.0",  # Score plotting
 ]
 
 [tool.uv]

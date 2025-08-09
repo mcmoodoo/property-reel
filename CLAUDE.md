@@ -32,8 +32,14 @@ uv run best-shot process videos/interior-shot.mp4 --config config/interior.yaml
 # Specify output directory and number of clips
 uv run best-shot process videos/aerial-shot.mp4 --output-dir results --top-k 7
 
-# Batch process all videos in directory
-uv run best-shot batch videos/ --pattern "*.mp4"
+# Batch process all videos in directory (auto-detects .mp4, .MP4, .mov, etc.)
+uv run best-shot batch videos/
+
+# Process only specific pattern
+uv run best-shot batch videos/ --pattern "*.MP4"
+
+# Stop on first error instead of continuing
+uv run best-shot batch videos/ --no-continue-on-error
 
 # Quick analysis without extraction
 uv run best-shot analyze videos/aerial-shot.mp4
