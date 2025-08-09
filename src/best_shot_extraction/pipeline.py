@@ -13,6 +13,7 @@ from .scorers import CompositeScorer
 from .temporal import TemporalProcessor
 from .clip_extractor import ClipExtractor
 from .diversity import DiversityFilter
+from .shot_detection import ShotBoundaryDetector
 from .utils import get_video_info, create_score_plot, create_contact_sheet
 
 logger = logging.getLogger(__name__)
@@ -56,9 +57,11 @@ class Pipeline:
         self.frame_extractor = FrameExtractor()
         
         # Composite scorer with weights from config
+        motion_config = self.config.get('motion', {})
         self.scorer = CompositeScorer(
             weights=self.config['scoring']['weights'],
-            use_cache=self.config['pipeline']['use_cache']
+            use_cache=self.config['pipeline']['use_cache'],
+            motion_config=motion_config
         )
         
         # Set saliency prompts if specified
@@ -68,11 +71,29 @@ class Pipeline:
             )
         
         # Temporal processor
+        temporal_config = self.config.get('temporal', {})
         self.temporal_processor = TemporalProcessor(
-            smooth_window_seconds=self.config['temporal']['smooth_window_seconds'],
-            min_peak_distance_seconds=self.config['temporal']['min_peak_distance_seconds'],
-            fps=self.config['frame_extraction']['fps']
+            smooth_window_seconds=temporal_config.get('smooth_window_seconds', 2.0),
+            min_peak_distance_seconds=temporal_config.get('min_peak_distance_seconds', 4.0),
+            fps=self.config['frame_extraction']['fps'],
+            motion_aware=temporal_config.get('motion_aware', True),
+            static_window_seconds=temporal_config.get('static_window_seconds', 3.0),
+            dynamic_window_seconds=temporal_config.get('dynamic_window_seconds', 1.5),
+            motion_threshold=temporal_config.get('motion_threshold', 2.0)
         )
+        
+        # Shot boundary detector
+        shot_config = self.config.get('shot_detection', {})
+        if shot_config.get('enabled', False):
+            self.shot_detector = ShotBoundaryDetector(
+                histogram_threshold=shot_config.get('histogram_threshold', 0.4),
+                edge_threshold=shot_config.get('edge_threshold', 0.3),
+                motion_threshold=shot_config.get('motion_threshold', 10.0),
+                min_shot_length=shot_config.get('min_shot_length', 1.0),
+                fps=self.config['frame_extraction']['fps']
+            )
+        else:
+            self.shot_detector = None
         
         # Clip extractor
         self.clip_extractor = ClipExtractor(
@@ -146,8 +167,18 @@ class Pipeline:
         frame_paths = self.frame_extractor.get_frame_paths(frames_dir)
         logger.info(f"  Extracted {len(frame_paths)} frames")
         
-        # Step 3: Score frames
-        logger.info("Step 3: Scoring frames...")
+        # Step 3: Detect shot boundaries (optional)
+        shot_boundaries = None
+        shots_info = None
+        if self.shot_detector:
+            logger.info("Step 3: Detecting shot boundaries...")
+            boundaries = self.shot_detector.detect_boundaries(frame_paths)
+            shots_info = self.shot_detector.segment_into_shots(frame_paths, boundaries)
+            shot_boundaries = [b[0] for b in boundaries]
+            logger.info(f"  Detected {len(shots_info)} shots")
+        
+        # Step 4: Score frames
+        logger.info("Step 4: Scoring frames...")
         scores = self.scorer.score_frames(frame_paths)
         scores_stats = {
             "mean": float(scores.mean()),
@@ -158,14 +189,22 @@ class Pipeline:
         logger.info(f"  Score statistics: mean={scores_stats['mean']:.3f}, "
                    f"std={scores_stats['std']:.3f}")
         
-        # Step 4: Temporal processing
-        logger.info("Step 4: Temporal processing...")
-        smoothed_scores, peaks = self.temporal_processor.process(scores, top_k)
+        # Get motion metrics if available
+        motion_scores = self.scorer.get_motion_metrics(frame_paths)
+        
+        # Step 5: Temporal processing
+        logger.info("Step 5: Temporal processing...")
+        smoothed_scores, peaks = self.temporal_processor.process(
+            scores, 
+            top_k,
+            motion_scores=motion_scores,
+            shot_boundaries=shot_boundaries
+        )
         logger.info(f"  Found {len(peaks)} peaks")
         
-        # Step 5: Diversity filtering
+        # Step 6: Diversity filtering
         if self.diversity_filter and len(peaks) > 1:
-            logger.info("Step 5: Diversity filtering...")
+            logger.info("Step 6: Diversity filtering...")
             diversity_stats = self.diversity_filter.analyze_diversity(peaks, frame_paths)
             logger.info(f"  Diversity analysis: mean_distance={diversity_stats['mean_distance']:.3f}, "
                        f"similar_pairs={diversity_stats['num_similar_pairs']}")
@@ -176,8 +215,8 @@ class Pipeline:
             filtered_peaks = peaks
             diversity_stats = None
         
-        # Step 6: Extract clips
-        logger.info("Step 6: Extracting clips...")
+        # Step 7: Extract clips
+        logger.info("Step 7: Extracting clips...")
         clips_metadata = self.clip_extractor.extract_clips(
             video_path,
             filtered_peaks,
@@ -187,8 +226,8 @@ class Pipeline:
         )
         logger.info(f"  Extracted {len(clips_metadata)} clips")
         
-        # Step 7: Generate visualizations and reports
-        logger.info("Step 7: Generating outputs...")
+        # Step 8: Generate visualizations and reports
+        logger.info("Step 8: Generating outputs...")
         
         # Score plot
         if self.config['output']['save_score_plot']:

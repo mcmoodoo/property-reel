@@ -5,6 +5,7 @@ from .sharpness import SharpnessScorer
 from .exposure import ExposureScorer
 from .aesthetics import AestheticsScorer
 from .saliency import SaliencyScorer
+from .motion import MotionScorer
 from .composite import CompositeScorer
 
 __all__ = [
@@ -13,5 +14,6 @@ __all__ = [
     'ExposureScorer',
     'AestheticsScorer',
     'SaliencyScorer',
+    'MotionScorer',
     'CompositeScorer'
 ]

@@ -1,0 +1,57 @@
+# Configuration optimized for smooth aerial/drone footage
+
+pipeline:
+  use_cache: true
+  detect_shots: true
+  motion_analysis: true
+
+frame_extraction:
+  fps: 3.0  # Extract 3 frames per second
+
+scoring:
+  weights:
+    sharpness: 0.2
+    exposure: -0.1
+    aesthetics: 0.3
+    saliency: 0.1
+    motion: 0.4  # High weight on motion quality
+    
+  saliency_prompts:
+    - "aerial landscape photography"
+    - "cinematic drone shot"
+    - "beautiful vista from above"
+
+motion:
+  smoothness_weight: 0.5  # Prioritize smooth motion
+  stability_weight: 0.3
+  consistency_weight: 0.2
+  penalize_reversals: true
+  reversal_penalty: 0.7  # Strong penalty for direction changes
+  max_shake_threshold: 1.5
+  optimal_motion_range: [1.0, 4.0]  # Slow, steady movement
+
+shot_detection:
+  enabled: true
+  histogram_threshold: 0.4
+  edge_threshold: 0.3
+  motion_threshold: 10.0
+  min_shot_length: 2.0
+
+temporal:
+  smooth_window_seconds: 3.0  # Longer window for aerial
+  min_peak_distance_seconds: 5.0
+  motion_aware: true
+  static_window_seconds: 4.0
+  dynamic_window_seconds: 2.0
+  motion_threshold: 2.0
+
+clips:
+  pre_roll_seconds: 1.5
+  post_roll_seconds: 1.5
+  video_codec: "libx264"
+  crf: 20
+  preset: "slow"
+
+diversity:
+  enabled: true
+  similarity_threshold: 0.85

@@ -10,6 +10,7 @@ from .sharpness import SharpnessScorer
 from .exposure import ExposureScorer
 from .aesthetics import AestheticsScorer
 from .saliency import SaliencyScorer, VideoTypeScorer
+from .motion import MotionScorer
 
 logger = logging.getLogger(__name__)
 
@@ -21,7 +22,8 @@ class CompositeScorer:
         self,
         weights: Optional[Dict[str, float]] = None,
         video_type: Optional[str] = None,
-        use_cache: bool = True
+        use_cache: bool = True,
+        motion_config: Optional[Dict] = None
     ):
         """
         Initialize composite scorer.
@@ -30,13 +32,15 @@ class CompositeScorer:
             weights: Dictionary of scorer weights
             video_type: Type of video for specialized scoring
             use_cache: Whether to use cached embeddings
+            motion_config: Configuration for motion scorer
         """
         # Default weights
         default_weights = {
-            "sharpness": 0.3,
-            "exposure": -0.2,  # Negative because it's a penalty
-            "aesthetics": 0.4,
-            "saliency": 0.1
+            "sharpness": 0.25,
+            "exposure": -0.15,  # Negative because it's a penalty
+            "aesthetics": 0.35,
+            "saliency": 0.1,
+            "motion": 0.3  # Add motion scoring
         }
         
         self.weights = weights or default_weights
@@ -70,6 +74,14 @@ class CompositeScorer:
                 self.scorers["saliency"] = SaliencyScorer(
                     weight=self.weights["saliency"]
                 )
+        
+        if "motion" in self.weights:
+            motion_params = motion_config or {}
+            self.scorers["motion"] = MotionScorer(
+                weight=self.weights["motion"],
+                use_cache=use_cache,
+                **motion_params
+            )
         
         # Normalize weights to sum to 1 (considering absolute values)
         total_weight = sum(abs(w) for w in self.weights.values())
@@ -127,6 +139,22 @@ class CompositeScorer:
                    f"max={composite_scores.max():.3f}")
         
         return composite_scores
+    
+    def get_motion_metrics(self, frames: Union[Path, List[Path]]) -> Optional[np.ndarray]:
+        """
+        Get motion metrics if motion scorer is available.
+        
+        Args:
+            frames: Directory containing frames or list of frame paths
+            
+        Returns:
+            Array of motion magnitudes or None
+        """
+        if "motion" in self.scorers:
+            # Get raw motion scores
+            motion_scores = self.scorers["motion"].score_frames(frames)
+            return motion_scores
+        return None
     
     def get_score_components(self, frame_path: Path) -> Dict[str, float]:
         """

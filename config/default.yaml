@@ -8,10 +8,11 @@ frame_extraction:
 # Scoring weights (should sum to 1.0 when considering absolute values)
 scoring:
   weights:
-    sharpness: 0.3
-    exposure: -0.2  # Negative because it's a penalty
-    aesthetics: 0.4
+    sharpness: 0.25
+    exposure: -0.15  # Negative because it's a penalty
+    aesthetics: 0.35
     saliency: 0.1
+    motion: 0.3  # Motion quality score
   
   # Saliency prompts (for general videos)
   saliency_prompts:
@@ -20,10 +21,32 @@ scoring:
     - "professional cinematography"
     - "visually appealing scene"
 
+# Motion analysis settings
+motion:
+  smoothness_weight: 0.4
+  stability_weight: 0.3
+  consistency_weight: 0.3
+  penalize_reversals: true
+  reversal_penalty: 0.5
+  max_shake_threshold: 2.0
+  optimal_motion_range: [0.5, 5.0]
+
+# Shot boundary detection
+shot_detection:
+  enabled: false  # Disable by default for compatibility
+  histogram_threshold: 0.4
+  edge_threshold: 0.3
+  motion_threshold: 10.0
+  min_shot_length: 1.0
+
 # Temporal processing
 temporal:
   smooth_window_seconds: 2.0  # Window size for temporal smoothing
   min_peak_distance_seconds: 4.0  # Minimum distance between peaks
+  motion_aware: true  # Enable motion-aware smoothing
+  static_window_seconds: 3.0  # Window for static shots
+  dynamic_window_seconds: 1.5  # Window for dynamic shots
+  motion_threshold: 2.0  # Threshold to distinguish static/dynamic
   
 # Clip extraction
 clips:
