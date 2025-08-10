@@ -45,15 +45,15 @@ This backend serves as the orchestration layer for a real estate video processin
 
 3. **Start the server:**
    ```bash
-   # Using UV run
+   # Using the run script (recommended)
    uv run python run.py
+   
+   # Or use uvicorn directly
+   uv run uvicorn main:app --host 0.0.0.0 --port 8000 --reload
    
    # Or activate venv and run directly
    source .venv/bin/activate  # On Windows: .venv\Scripts\activate
    python run.py
-   
-   # Or use uvicorn directly
-   uv run uvicorn main:app --host 0.0.0.0 --port 8000 --reload
    ```
 
 ## Configuration
