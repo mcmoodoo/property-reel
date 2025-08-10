@@ -16,7 +16,7 @@ from api import health, jobs, webhook
 # Configure logging
 logging.basicConfig(
     level=logging.INFO if not settings.debug else logging.DEBUG,
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
 )
 logger = logging.getLogger(__name__)
 
@@ -24,32 +24,32 @@ logger = logging.getLogger(__name__)
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Application lifespan events."""
-    
+
     # Startup
     logger.info("Starting Real Estate Video Processing API")
-    
+
     try:
         # Initialize database tables
         db_manager.create_tables()
         logger.info("Database initialization completed")
-        
+
         # Test database connection
         if db_manager.test_connection():
             logger.info("Database connection verified")
         else:
             logger.warning("Database connection test failed")
-        
+
         # Log configuration status
         logger.info(f"API starting on {settings.api_host}:{settings.api_port}")
         logger.info(f"Debug mode: {settings.debug}")
         logger.info(f"CORS origins: {settings.cors_origins_list}")
-        
+
         yield
-        
+
     except Exception as e:
         logger.error(f"Startup failed: {str(e)}")
         raise
-    
+
     # Shutdown
     logger.info("Shutting down API")
 
@@ -61,7 +61,7 @@ app = FastAPI(
     version="1.0.0",
     docs_url="/docs" if settings.debug else None,
     redoc_url="/redoc" if settings.debug else None,
-    lifespan=lifespan
+    lifespan=lifespan,
 )
 
 
@@ -77,8 +77,8 @@ app.add_middleware(
 # Security middleware
 if not settings.debug:
     app.add_middleware(
-        TrustedHostMiddleware, 
-        allowed_hosts=["*"]  # Configure based on your domain
+        TrustedHostMiddleware,
+        allowed_hosts=["*"],  # Configure based on your domain
     )
 
 
@@ -98,20 +98,22 @@ async def add_process_time_header(request: Request, call_next):
 async def global_exception_handler(request: Request, exc: Exception):
     """Handle unexpected errors."""
     logger.error(f"Unhandled error on {request.method} {request.url}: {str(exc)}")
-    
+
     return JSONResponse(
         status_code=500,
         content={
             "error": "Internal server error",
-            "detail": "An unexpected error occurred" if not settings.debug else str(exc),
-            "path": str(request.url.path)
-        }
+            "detail": "An unexpected error occurred"
+            if not settings.debug
+            else str(exc),
+            "path": str(request.url.path),
+        },
     )
 
 
 # Include routers
 app.include_router(health.router, prefix="/health", tags=["Health"])
-app.include_router(jobs.router, prefix="/api/v1/jobs", tags=["Jobs"])  
+app.include_router(jobs.router, prefix="/api/v1/jobs", tags=["Jobs"])
 app.include_router(webhook.router, prefix="/webhook", tags=["Webhooks"])
 
 
@@ -122,27 +124,23 @@ async def root():
         "service": "Real Estate Video Processing API",
         "version": "1.0.0",
         "status": "operational",
-        "docs": "/docs" if settings.debug else "Documentation disabled in production"
+        "docs": "/docs" if settings.debug else "Documentation disabled in production",
     }
 
 
 @app.get("/status")
 async def status():
     """Quick status check."""
-    return {
-        "status": "ok",
-        "timestamp": time.time(),
-        "debug_mode": settings.debug
-    }
+    return {"status": "ok", "timestamp": time.time(), "debug_mode": settings.debug}
 
 
 if __name__ == "__main__":
     import uvicorn
-    
+
     uvicorn.run(
         "main:app",
         host=settings.api_host,
         port=settings.api_port,
         reload=settings.debug,
-        log_level="debug" if settings.debug else "info"
+        log_level="debug" if settings.debug else "info",
     )
