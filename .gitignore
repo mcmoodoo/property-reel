@@ -93,7 +93,7 @@ test-results/
 .envrc
 
 # Package managers
-uv.lock
+# uv.lock - SHOULD BE TRACKED for reproducible builds
 *.lock
 node_modules/
 npm-debug.log*
@@ -130,3 +130,36 @@ checkpoints/
 *.backup
 *.bak
 *~
+
+# FastAPI/Uvicorn specific
+uvicorn-access.log
+uvicorn-error.log
+gunicorn-access.log
+gunicorn-error.log
+
+# RunPod specific
+.runpod/
+runpod-output/
+runpod-logs/
+
+# Database dumps and backups
+*.dump
+*.sql.gz
+
+# Local development files
+.local/
+.cache/
+run.log
+debug.log
+
+# Secrets and credentials
+secrets/
+credentials/
+*.credentials
+auth.json
+service-account.json
+
+# Performance and monitoring
+.profiler/
+*.prof
+flame-graph/
