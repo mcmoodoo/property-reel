@@ -149,7 +149,9 @@ class RunPodService:
             }
 
             # Test with a simple API call (list endpoints)
-            response = requests.get(f"{self.base_url}/endpoints", headers=headers, timeout=5)
+            response = requests.get(
+                f"{self.base_url}/endpoints", headers=headers, timeout=5
+            )
 
             return response.status_code == 200
 

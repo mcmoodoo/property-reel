@@ -45,32 +45,45 @@ class S3Service:
 
     def validate_file(self, file: UploadFile) -> tuple[bool, str]:
         """Validate uploaded file for video processing."""
-        
+
         # Check file size (max 500MB)
         max_size = 500 * 1024 * 1024  # 500MB in bytes
-        if hasattr(file, 'size') and file.size and file.size > max_size:
-            return False, f"File size {file.size / 1024 / 1024:.1f}MB exceeds maximum {max_size / 1024 / 1024}MB"
-        
+        if hasattr(file, "size") and file.size and file.size > max_size:
+            return (
+                False,
+                f"File size {file.size / 1024 / 1024:.1f}MB exceeds maximum {max_size / 1024 / 1024}MB",
+            )
+
         # Check file extension
-        allowed_extensions = {'.mp4', '.avi', '.mov', '.mkv', '.m4v', '.webm', '.flv'}
+        allowed_extensions = {".mp4", ".avi", ".mov", ".mkv", ".m4v", ".webm", ".flv"}
         file_extension = os.path.splitext(file.filename)[1].lower()
-        
+
         if file_extension not in allowed_extensions:
-            return False, f"File type '{file_extension}' not supported. Allowed: {', '.join(allowed_extensions)}"
-        
+            return (
+                False,
+                f"File type '{file_extension}' not supported. Allowed: {', '.join(allowed_extensions)}",
+            )
+
         # Check content type
         allowed_content_types = {
-            'video/mp4', 'video/avi', 'video/quicktime', 'video/x-msvideo', 
-            'video/x-matroska', 'video/webm', 'video/x-flv'
+            "video/mp4",
+            "video/avi",
+            "video/quicktime",
+            "video/x-msvideo",
+            "video/x-matroska",
+            "video/webm",
+            "video/x-flv",
         }
-        
+
         if file.content_type and file.content_type not in allowed_content_types:
-            logger.warning(f"Unexpected content type: {file.content_type} for {file.filename}")
-        
+            logger.warning(
+                f"Unexpected content type: {file.content_type} for {file.filename}"
+            )
+
         # Check filename
         if not file.filename or len(file.filename) > 255:
             return False, "Invalid filename"
-        
+
         return True, "File validation passed"
 
     async def upload_video_file(
@@ -80,7 +93,7 @@ class S3Service:
 
         if not self.s3_client:
             raise ValueError("S3 client not configured")
-        
+
         # Validate file before upload
         is_valid, validation_message = self.validate_file(file)
         if not is_valid:
@@ -116,16 +129,16 @@ class S3Service:
             return s3_url
 
         except ClientError as e:
-            error_code = e.response.get('Error', {}).get('Code', 'Unknown')
-            error_message = e.response.get('Error', {}).get('Message', str(e))
-            
-            if error_code == 'NoSuchBucket':
+            error_code = e.response.get("Error", {}).get("Code", "Unknown")
+            error_message = e.response.get("Error", {}).get("Message", str(e))
+
+            if error_code == "NoSuchBucket":
                 logger.error(f"Bucket {self.video_bucket} does not exist")
                 raise Exception(f"Upload bucket not found: {self.video_bucket}")
-            elif error_code == 'AccessDenied':
+            elif error_code == "AccessDenied":
                 logger.error(f"Access denied to bucket {self.video_bucket}")
                 raise Exception("Insufficient permissions for video upload")
-            elif error_code == 'InvalidRequest':
+            elif error_code == "InvalidRequest":
                 logger.error(f"Invalid upload request: {error_message}")
                 raise Exception(f"Invalid upload request: {error_message}")
             else:
@@ -262,7 +275,9 @@ class S3Service:
         """Validate S3 service configuration."""
 
         # Check if credentials are available (either env vars or AWS credential chain)
-        credentials_available = bool(settings.aws_access_key_id and settings.aws_secret_access_key)
+        credentials_available = bool(
+            settings.aws_access_key_id and settings.aws_secret_access_key
+        )
         if not credentials_available:
             # Test if AWS credential chain works
             try:
@@ -307,44 +322,46 @@ class S3Service:
 
     async def create_bucket_if_not_exists(self, bucket_name: str) -> bool:
         """Create S3 bucket if it doesn't exist."""
-        
+
         if not self.s3_client:
             raise ValueError("S3 client not configured")
-            
+
         try:
             # Check if bucket exists
             self.s3_client.head_bucket(Bucket=bucket_name)
             logger.info(f"Bucket {bucket_name} already exists")
             return True
-            
+
         except ClientError as e:
-            error_code = int(e.response['Error']['Code'])
-            
+            error_code = int(e.response["Error"]["Code"])
+
             if error_code == 404:
                 # Bucket doesn't exist, create it
                 try:
-                    if settings.aws_region == 'us-east-1':
+                    if settings.aws_region == "us-east-1":
                         # us-east-1 doesn't need LocationConstraint
                         self.s3_client.create_bucket(Bucket=bucket_name)
                     else:
                         self.s3_client.create_bucket(
                             Bucket=bucket_name,
                             CreateBucketConfiguration={
-                                'LocationConstraint': settings.aws_region
-                            }
+                                "LocationConstraint": settings.aws_region
+                            },
                         )
-                    
+
                     # Enable versioning for better data protection
                     self.s3_client.put_bucket_versioning(
                         Bucket=bucket_name,
-                        VersioningConfiguration={'Status': 'Enabled'}
+                        VersioningConfiguration={"Status": "Enabled"},
                     )
-                    
+
                     logger.info(f"✅ Created S3 bucket: {bucket_name}")
                     return True
-                    
+
                 except ClientError as create_error:
-                    logger.error(f"Failed to create bucket {bucket_name}: {create_error}")
+                    logger.error(
+                        f"Failed to create bucket {bucket_name}: {create_error}"
+                    )
                     return False
             else:
                 logger.error(f"Access denied to bucket {bucket_name}: {e}")
@@ -352,19 +369,19 @@ class S3Service:
 
     async def setup_buckets(self) -> dict[str, bool]:
         """Create required S3 buckets if they don't exist."""
-        
+
         results = {}
-        
+
         if self.video_bucket:
             results[self.video_bucket] = await self.create_bucket_if_not_exists(
                 self.video_bucket
             )
-            
+
         if self.results_bucket:
             results[self.results_bucket] = await self.create_bucket_if_not_exists(
                 self.results_bucket
             )
-            
+
         return results
 
 
