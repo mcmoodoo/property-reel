@@ -130,6 +130,10 @@ Response:
 real-estate-video-pipeline/
 ├── backend/                    # FastAPI backend (NO ML models)
 │   ├── main.py                # Application entry point
+│   ├── run.py                 # Simple application runner
+│   ├── justfile               # Development commands
+│   ├── pyproject.toml         # Project config & dependencies
+│   ├── Dockerfile             # Container image
 │   ├── api/                   # REST API endpoints
 │   │   ├── health.py          # Health monitoring
 │   │   ├── jobs.py            # Job management
@@ -140,11 +144,9 @@ real-estate-video-pipeline/
 │   ├── services/              # External integrations
 │   │   ├── s3_service.py      # AWS S3 operations
 │   │   └── runpod_service.py  # RunPod API client
-│   ├── utils/                 # Utilities
-│   │   ├── config.py          # Configuration management
-│   │   └── validation.py      # Input validation
-│   ├── requirements.txt       # Lightweight dependencies
-│   └── start.sh              # Startup script
+│   └── utils/                 # Utilities
+│       ├── config.py          # Configuration management
+│       └── validation.py      # Input validation
 ├── roadmap.md                 # Complete implementation plan
 └── README.md                  # This file
 ```

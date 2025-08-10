@@ -20,7 +20,9 @@ This backend serves as the orchestration layer for a real estate video processin
 
 - Python 3.11+
 - [UV package manager](https://github.com/astral-sh/uv)
+- [Just command runner](https://github.com/casey/just) (optional but recommended)
 - PostgreSQL (optional, SQLite works for development)
+- Docker (optional, for local PostgreSQL)
 
 ### Installation
 
@@ -45,16 +47,30 @@ This backend serves as the orchestration layer for a real estate video processin
 
 3. **Start the server:**
    ```bash
-   # Using the run script (recommended)
+   # Using Just (recommended)
+   just dev
+   
+   # Or manually
    uv run python run.py
    
    # Or use uvicorn directly
    uv run uvicorn main:app --host 0.0.0.0 --port 8000 --reload
-   
-   # Or activate venv and run directly
-   source .venv/bin/activate  # On Windows: .venv\Scripts\activate
-   python run.py
    ```
+
+### Quick Setup with Just
+
+If you have [Just](https://github.com/casey/just) installed:
+
+```bash
+# Complete setup for new developers
+just setup
+
+# Start with PostgreSQL database
+just dev-full
+
+# Or just start the API
+just dev
+```
 
 ## Configuration
 
@@ -178,45 +194,44 @@ uv pip install -e ".[dev]"
 ### Code Quality
 
 ```bash
-# Format code
-uv run black .
+# With Just
+just fmt          # Format code
+just lint         # Lint code
+just typecheck    # Type checking
+just check        # Run all quality checks
 
-# Lint code
+# Or manually
+uv run ruff format .
 uv run ruff check .
-
-# Type checking
 uv run mypy .
 ```
 
 ### Running Tests
 
 ```bash
-# Install test dependencies (included in dev)
+# With Just
+just test         # Run tests
+just test-cov     # Run with coverage
+
+# Or manually
 uv sync --all-extras
-
-# Run tests
 uv run pytest tests/
-
-# With coverage
-uv run pytest --cov=. tests/
 ```
 
-### Database Migrations
-
-For production deployments, use Alembic for database migrations:
+### Database Management
 
 ```bash
-# Install Alembic
-uv pip install -e ".[migrations]"
+# With Just (PostgreSQL in Docker)
+just db-start     # Start PostgreSQL
+just db-stop      # Stop PostgreSQL
+just db-connect   # Connect to database
+just db-reset     # Reset database
 
-# Initialize migrations
-uv run alembic init alembic
-
-# Create migration
-uv run alembic revision --autogenerate -m "Initial tables"
-
-# Apply migrations
-uv run alembic upgrade head
+# Migrations with Just
+just migrate-init          # Initialize Alembic
+just migrate-create "message"  # Create migration
+just migrate-up            # Apply migrations
+just migrate-down          # Rollback migration
 ```
 
 ### Health Monitoring

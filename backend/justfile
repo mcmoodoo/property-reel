@@ -1,0 +1,184 @@
+# Real Estate Video Processing Backend - Development Commands
+# Usage: just <recipe>
+
+# Default recipe - show available commands
+default:
+    @just --list
+
+# === Development ===
+
+# Install dependencies
+install:
+    uv sync
+
+# Install with all optional dependencies (dev tools)
+install-dev:
+    uv sync --all-extras
+
+# Run the development server
+dev:
+    uv run python run.py
+
+# Run with uvicorn directly
+serve:
+    uv run uvicorn main:app --host 0.0.0.0 --port 8000 --reload
+
+# === Code Quality ===
+
+# Format code with ruff
+fmt:
+    uv run ruff format .
+
+# Check code quality
+lint:
+    uv run ruff check .
+
+# Fix auto-fixable linting issues
+fix:
+    uv run ruff check . --fix
+
+# Type checking with mypy
+typecheck:
+    uv run mypy .
+
+# Run all quality checks
+check: lint typecheck
+    @echo "✅ All quality checks passed!"
+
+# === Testing ===
+
+# Run tests
+test:
+    uv run pytest tests/
+
+# Run tests with coverage
+test-cov:
+    uv run pytest --cov=. tests/
+
+# === Database Management ===
+
+# Start PostgreSQL in Podman (for local development)
+db-start:
+    podman run --name real-estate-postgres \
+        -e POSTGRES_DB=real_estate_pipeline \
+        -e POSTGRES_USER=postgres \
+        -e POSTGRES_PASSWORD=postgres \
+        -p 5432:5432 \
+        -d postgres:15
+
+# Stop PostgreSQL container
+db-stop:
+    podman stop real-estate-postgres
+
+# Remove PostgreSQL container
+db-remove:
+    podman rm real-estate-postgres
+
+# Connect to PostgreSQL database
+db-connect:
+    podman exec -it real-estate-postgres psql -U postgres -d real_estate_pipeline
+
+# View database logs
+db-logs:
+    podman logs real-estate-postgres
+
+# Reset database (stop, remove, start fresh)
+db-reset: db-stop db-remove db-start
+    @echo "🔄 Database reset complete"
+
+# === Database Migrations ===
+
+# Initialize Alembic migrations
+migrate-init:
+    uv run alembic init alembic
+    @echo "📝 Edit alembic.ini and alembic/env.py to configure your database"
+
+# Create a new migration
+migrate-create MESSAGE:
+    uv run alembic revision --autogenerate -m "{{MESSAGE}}"
+
+# Apply migrations
+migrate-up:
+    uv run alembic upgrade head
+
+# Rollback last migration
+migrate-down:
+    uv run alembic downgrade -1
+
+# Show migration history
+migrate-history:
+    uv run alembic history
+
+# Show current migration
+migrate-current:
+    uv run alembic current
+
+# === Environment ===
+
+# Copy environment template
+env:
+    cp .env.example .env
+    @echo "📝 Edit .env with your configuration"
+
+# Check environment configuration
+env-check:
+    uv run python -c "from utils.config import settings; print('✅ Environment loaded successfully')"
+
+# Show configuration status (without secrets)
+config:
+    uv run python -c "
+import json
+from utils.config import settings
+config = {
+    'database': bool(settings.database_url),
+    'redis': bool(settings.redis_url),
+    's3_configured': bool(settings.aws_access_key_id and settings.aws_secret_access_key),
+    'runpod_configured': bool(settings.runpod_api_key and settings.runpod_endpoint_id),
+    'debug': settings.debug,
+    'api_port': settings.api_port
+}
+print(json.dumps(config, indent=2))"
+
+# === Health Checks ===
+
+# Check API health (requires running server)
+health:
+    curl -s http://localhost:8000/health/ | python -m json.tool
+
+# Check detailed health status
+health-detailed:
+    curl -s http://localhost:8000/health/detailed | python -m json.tool
+
+# === Podman ===
+
+# Build Podman image
+podman-build:
+    podman build -t real-estate-backend .
+
+# Run in Podman container
+podman-run:
+    podman run --rm -p 8000:8000 --env-file .env real-estate-backend
+
+# === Cleanup ===
+
+# Clean Python cache files
+clean:
+    find . -type f -name "*.pyc" -delete
+    find . -type d -name "__pycache__" -delete
+    find . -type d -name "*.egg-info" -exec rm -rf {} +
+
+# Clean everything (cache + dependencies)
+clean-all: clean
+    rm -rf .venv/
+    rm -f uv.lock
+
+# === Quick Start ===
+
+# Complete setup for new developers
+setup: install-dev env
+    @echo "🚀 Setup complete! Edit .env and run 'just dev'"
+
+# Full development environment with database
+dev-full: setup db-start
+    @echo "💾 Database started at localhost:5432"
+    @echo "🚀 Run 'just dev' to start the API server"
