@@ -55,6 +55,10 @@ test:
 test-cov:
     uv run pytest --cov=. tests/
 
+# Test S3 connectivity and configuration
+test-s3:
+    uv run python test_s3.py
+
 # === Database Management ===
 
 # Start PostgreSQL in Podman (for local development)
