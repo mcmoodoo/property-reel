@@ -24,15 +24,18 @@ Real Estate Agency → Web Frontend → Backend API → RunPod Serverless → Fi
 # Navigate to backend directory
 cd backend/
 
+# Install dependencies with UV
+uv sync
+
 # Copy environment configuration
 cp .env.example .env
 # Edit .env with your credentials
 
-# Install dependencies (lightweight, no ML libraries)
-pip install -r requirements.txt
-
 # Start the API server
-./start.sh
+uv run python run.py
+
+# Or use uvicorn directly
+uv run uvicorn main:app --host 0.0.0.0 --port 8000 --reload
 ```
 
 The API will be available at `http://localhost:8000` with documentation at `http://localhost:8000/docs`

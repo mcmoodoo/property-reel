@@ -16,25 +16,44 @@ This backend serves as the orchestration layer for a real estate video processin
 
 ## Quick Start
 
-1. **Copy environment configuration:**
+### Prerequisites
+
+- Python 3.11+
+- [UV package manager](https://github.com/astral-sh/uv)
+- PostgreSQL (optional, SQLite works for development)
+
+### Installation
+
+1. **Install UV (if not already installed):**
    ```bash
+   curl -LsSf https://astral.sh/uv/install.sh | sh
+   # or
+   pip install uv
+   ```
+
+2. **Clone and setup:**
+   ```bash
+   cd backend/
+   
+   # Install dependencies with UV
+   uv sync
+   
+   # Copy environment configuration
    cp .env.example .env
    # Edit .env with your credentials
    ```
 
-2. **Install dependencies:**
-   ```bash
-   pip install -r requirements.txt
-   ```
-
 3. **Start the server:**
    ```bash
-   ./start.sh
-   ```
-
-   Or manually:
-   ```bash
-   python -m uvicorn main:app --host 0.0.0.0 --port 8000 --reload
+   # Using UV run
+   uv run python run.py
+   
+   # Or activate venv and run directly
+   source .venv/bin/activate  # On Windows: .venv\Scripts\activate
+   python run.py
+   
+   # Or use uvicorn directly
+   uv run uvicorn main:app --host 0.0.0.0 --port 8000 --reload
    ```
 
 ## Configuration
@@ -146,32 +165,58 @@ backend/
 
 ## Development
 
+### Development Setup
+
+```bash
+# Install with dev dependencies
+uv sync --all-extras
+
+# Or just dev tools
+uv pip install -e ".[dev]"
+```
+
+### Code Quality
+
+```bash
+# Format code
+uv run black .
+
+# Lint code
+uv run ruff check .
+
+# Type checking
+uv run mypy .
+```
+
 ### Running Tests
 
 ```bash
-# Install test dependencies
-pip install pytest pytest-asyncio httpx
+# Install test dependencies (included in dev)
+uv sync --all-extras
 
 # Run tests
-pytest tests/
+uv run pytest tests/
+
+# With coverage
+uv run pytest --cov=. tests/
 ```
 
 ### Database Migrations
 
-For production deployments, consider using Alembic for database migrations:
+For production deployments, use Alembic for database migrations:
 
 ```bash
 # Install Alembic
-pip install alembic
+uv pip install -e ".[migrations]"
 
 # Initialize migrations
-alembic init alembic
+uv run alembic init alembic
 
 # Create migration
-alembic revision --autogenerate -m "Initial tables"
+uv run alembic revision --autogenerate -m "Initial tables"
 
 # Apply migrations
-alembic upgrade head
+uv run alembic upgrade head
 ```
 
 ### Health Monitoring

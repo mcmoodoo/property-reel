@@ -19,18 +19,24 @@ This is a Real Estate Video Processing Pipeline that automatically creates profe
 # Navigate to backend
 cd backend/
 
-# Copy environment configuration
+# Install dependencies with UV
+uv sync
+
+# Copy environment configuration (if needed)
 cp .env.example .env
 # Edit .env with your credentials
 
-# Install dependencies
-pip install -r requirements.txt
-
 # Start development server
-./start.sh
+uv run python run.py
 
-# Or manually:
-python -m uvicorn main:app --host 0.0.0.0 --port 8000 --reload
+# Or use uvicorn directly
+uv run uvicorn main:app --host 0.0.0.0 --port 8000 --reload
+
+# Run with dev dependencies
+uv sync --all-extras
+uv run black .  # Format code
+uv run ruff check .  # Lint code
+uv run pytest tests/  # Run tests
 ```
 
 ### API Testing
