@@ -1,23 +1,19 @@
 #!/usr/bin/env python3
-"""RunPod serverless handler for real estate video processing."""
+"""Simplified RunPod handler for video stitching POC."""
 
 import os
 import json
 import time
+import subprocess
 import traceback
 from typing import Any, Dict, List
+from pathlib import Path
 
 import runpod
 import boto3
 import requests
-import torch
-import numpy as np
-from PIL import Image
 import cv2
-
-# Import ML models
-from transformers import CLIPModel, CLIPProcessor, CLIPTokenizer
-import torchvision.transforms as transforms
+import numpy as np
 
 # Initialize S3 client
 s3_client = boto3.client(
@@ -26,30 +22,6 @@ s3_client = boto3.client(
     aws_secret_access_key=os.environ.get("AWS_SECRET_ACCESS_KEY"),
     region_name=os.environ.get("AWS_REGION", "us-east-1"),
 )
-
-# Global model variables (loaded once)
-clip_model = None
-clip_processor = None
-device = None
-
-
-def load_models():
-    """Load ML models into memory."""
-    global clip_model, clip_processor, device
-
-    print("🔄 Loading ML models...")
-
-    # Set device
-    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    print(f"Using device: {device}")
-
-    # Load CLIP model for aesthetic scoring
-    clip_model = CLIPModel.from_pretrained("openai/clip-vit-base-patch32")
-    clip_processor = CLIPProcessor.from_pretrained("openai/clip-vit-base-patch32")
-    clip_model.to(device)
-    clip_model.eval()
-
-    print("✅ Models loaded successfully")
 
 
 def download_video_from_s3(s3_url: str, local_path: str) -> str:
@@ -61,135 +33,196 @@ def download_video_from_s3(s3_url: str, local_path: str) -> str:
 
     print(f"📥 Downloading from S3: {bucket}/{key}")
     s3_client.download_file(bucket, key, local_path)
-
     return local_path
 
 
-def extract_frames(video_path: str, fps: int = 3) -> List[np.ndarray]:
-    """Extract frames from video at specified FPS."""
-    frames = []
+def get_video_info(video_path: str) -> Dict:
+    """Get basic video information using OpenCV."""
     cap = cv2.VideoCapture(video_path)
-
     if not cap.isOpened():
         raise ValueError(f"Cannot open video: {video_path}")
-
-    original_fps = cap.get(cv2.CAP_PROP_FPS)
-    frame_interval = int(original_fps / fps)
-
-    frame_count = 0
-    while True:
-        ret, frame = cap.read()
-        if not ret:
-            break
-
-        if frame_count % frame_interval == 0:
-            # Convert BGR to RGB
-            frame_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-            frames.append(frame_rgb)
-
-        frame_count += 1
-
+    
+    fps = cap.get(cv2.CAP_PROP_FPS)
+    frame_count = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
+    duration = frame_count / fps if fps > 0 else 0
+    width = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
+    height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
+    
     cap.release()
-    print(f"📸 Extracted {len(frames)} frames")
-    return frames
-
-
-def calculate_aesthetic_score(frame: np.ndarray) -> float:
-    """Calculate aesthetic score using CLIP."""
-    # Convert numpy array to PIL Image
-    image = Image.fromarray(frame)
-
-    # Prepare image for CLIP
-    inputs = clip_processor(images=image, return_tensors="pt")
-    inputs = {k: v.to(device) for k, v in inputs.items()}
-
-    # Get image features
-    with torch.no_grad():
-        image_features = clip_model.get_image_features(**inputs)
-
-    # Simple aesthetic scoring (you can enhance this)
-    # Using cosine similarity with "beautiful real estate interior" concept
-    text_inputs = clip_processor(
-        text=["beautiful real estate interior", "poor quality video"],
-        return_tensors="pt",
-        padding=True,
-    )
-    text_inputs = {k: v.to(device) for k, v in text_inputs.items()}
-
-    with torch.no_grad():
-        text_features = clip_model.get_text_features(**text_inputs)
-
-    # Calculate similarities
-    image_features = image_features / image_features.norm(dim=-1, keepdim=True)
-    text_features = text_features / text_features.norm(dim=-1, keepdim=True)
-
-    similarities = (image_features @ text_features.T).squeeze()
-
-    # Score is similarity to "beautiful" minus similarity to "poor quality"
-    score = float(similarities[0] - similarities[1])
-
-    return score
-
-
-def process_video(video_url: str, job_id: str) -> Dict[str, Any]:
-    """Process a single video and extract best shots."""
-    # Download video
-    local_video_path = f"/tmp/{job_id}_video.mp4"
-    download_video_from_s3(video_url, local_video_path)
-
-    # Extract frames
-    frames = extract_frames(local_video_path, fps=3)
-
-    # Score each frame
-    scores = []
-    for i, frame in enumerate(frames):
-        score = calculate_aesthetic_score(frame)
-        scores.append(
-            {
-                "frame_index": i,
-                "score": score,
-                "timestamp": i / 3.0,  # Since we extract at 3 FPS
-            }
-        )
-
-    # Find top scoring moments
-    scores.sort(key=lambda x: x["score"], reverse=True)
-    top_moments = scores[:5]  # Top 5 moments
-
-    # Clean up
-    os.remove(local_video_path)
-
+    
     return {
-        "video_url": video_url,
-        "total_frames": len(frames),
-        "top_moments": top_moments,
-        "average_score": sum(s["score"] for s in scores) / len(scores) if scores else 0,
+        "duration": duration,
+        "fps": fps,
+        "frame_count": frame_count,
+        "width": width,
+        "height": height
     }
 
 
-def upload_results_to_s3(results: Dict, job_id: str) -> str:
-    """Upload processing results to S3."""
+def calculate_sharpness(frame: np.ndarray) -> float:
+    """Calculate frame sharpness using Laplacian variance."""
+    gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+    return cv2.Laplacian(gray, cv2.CV_64F).var()
+
+
+def extract_best_segment(video_path: str, segment_duration: float = 10.0) -> str:
+    """Extract the best segment from middle portion of video."""
+    info = get_video_info(video_path)
+    
+    # Focus on middle 60% of video (skip first/last 20%)
+    start_offset = info["duration"] * 0.2
+    end_offset = info["duration"] * 0.8
+    available_duration = end_offset - start_offset
+    
+    # If video is shorter than segment duration, use the whole middle section
+    if available_duration <= segment_duration:
+        actual_duration = available_duration
+        segment_start = start_offset
+    else:
+        # Sample frames to find sharpest section
+        cap = cv2.VideoCapture(video_path)
+        sample_points = []
+        
+        # Sample every 5 seconds in the middle section
+        for t in np.arange(start_offset, end_offset, 5.0):
+            cap.set(cv2.CAP_PROP_POS_MSEC, t * 1000)
+            ret, frame = cap.read()
+            if ret:
+                sharpness = calculate_sharpness(frame)
+                sample_points.append((t, sharpness))
+        
+        cap.release()
+        
+        if sample_points:
+            # Find the sharpest point and center segment around it
+            best_time = max(sample_points, key=lambda x: x[1])[0]
+            segment_start = max(start_offset, best_time - segment_duration/2)
+            segment_start = min(segment_start, end_offset - segment_duration)
+            actual_duration = segment_duration
+        else:
+            # Fallback to middle of the middle section
+            segment_start = start_offset + (available_duration - segment_duration) / 2
+            actual_duration = segment_duration
+    
+    # Extract segment using FFmpeg
+    output_path = video_path.replace('.mp4', '_segment.mp4')
+    
+    cmd = [
+        'ffmpeg', '-y', '-i', video_path,
+        '-ss', str(segment_start),
+        '-t', str(actual_duration),
+        '-c:v', 'libx264', '-c:a', 'aac',
+        '-preset', 'fast',
+        output_path
+    ]
+    
+    result = subprocess.run(cmd, capture_output=True, text=True)
+    if result.returncode != 0:
+        raise Exception(f"FFmpeg failed: {result.stderr}")
+    
+    print(f"✂️ Extracted {actual_duration:.1f}s segment from {os.path.basename(video_path)}")
+    return output_path
+
+
+def concatenate_videos(video_paths: List[str], output_path: str) -> str:
+    """Concatenate multiple videos into one using FFmpeg."""
+    # Create a temporary file list for FFmpeg concat
+    concat_file = "/tmp/concat_list.txt"
+    
+    with open(concat_file, 'w') as f:
+        for video_path in video_paths:
+            f.write(f"file '{video_path}'\n")
+    
+    cmd = [
+        'ffmpeg', '-y', '-f', 'concat', '-safe', '0', '-i', concat_file,
+        '-c:v', 'libx264', '-c:a', 'aac',
+        '-preset', 'fast',
+        output_path
+    ]
+    
+    result = subprocess.run(cmd, capture_output=True, text=True)
+    if result.returncode != 0:
+        raise Exception(f"FFmpeg concatenation failed: {result.stderr}")
+    
+    print(f"🔗 Concatenated {len(video_paths)} videos into {os.path.basename(output_path)}")
+    return output_path
+
+
+def upload_to_s3(local_path: str, job_id: str) -> str:
+    """Upload final video to S3."""
     bucket = os.environ.get("S3_BUCKET_RESULTS", "unpin-real-estate-results")
-    key = f"results/{job_id}/metadata.json"
-
-    # Upload JSON results
-    s3_client.put_object(
-        Bucket=bucket,
-        Key=key,
-        Body=json.dumps(results, indent=2),
-        ContentType="application/json",
-    )
-
+    key = f"final_videos/{job_id}_final.mp4"
+    
+    s3_client.upload_file(local_path, bucket, key)
+    
     result_url = f"s3://{bucket}/{key}"
-    print(f"📤 Uploaded results to: {result_url}")
-
+    print(f"📤 Uploaded final video to: {result_url}")
+    
     return result_url
+
+
+def process_videos(video_urls: List[str], job_id: str) -> Dict[str, Any]:
+    """Process multiple videos and create final stitched video."""
+    temp_dir = Path("/tmp") / job_id
+    temp_dir.mkdir(exist_ok=True)
+    
+    segment_paths = []
+    video_info = []
+    
+    try:
+        # Process each video
+        for i, video_url in enumerate(video_urls):
+            print(f"🎥 Processing video {i+1}/{len(video_urls)}")
+            
+            # Download video
+            local_video = str(temp_dir / f"video_{i}.mp4")
+            download_video_from_s3(video_url, local_video)
+            
+            # Get video info
+            info = get_video_info(local_video)
+            video_info.append({
+                "url": video_url,
+                "duration": info["duration"],
+                "resolution": f"{info['width']}x{info['height']}"
+            })
+            
+            # Extract best segment
+            if info["duration"] > 5.0:  # Only process videos longer than 5 seconds
+                segment_path = extract_best_segment(local_video, segment_duration=8.0)
+                segment_paths.append(segment_path)
+            else:
+                print(f"⚠️ Skipping short video ({info['duration']:.1f}s): {video_url}")
+        
+        if not segment_paths:
+            raise ValueError("No suitable video segments found")
+        
+        # Concatenate all segments
+        final_video = str(temp_dir / "final_stitched.mp4")
+        concatenate_videos(segment_paths, final_video)
+        
+        # Upload to S3
+        result_url = upload_to_s3(final_video, job_id)
+        
+        return {
+            "status": "completed",
+            "result_url": result_url,
+            "processed_videos": len(segment_paths),
+            "total_videos": len(video_urls),
+            "video_info": video_info,
+            "final_duration": sum(8.0 for _ in segment_paths)  # Each segment is ~8s
+        }
+        
+    finally:
+        # Clean up temp files
+        import shutil
+        if temp_dir.exists():
+            shutil.rmtree(temp_dir)
 
 
 def handler(job: Dict[str, Any]) -> Dict[str, Any]:
     """Main RunPod handler function."""
     try:
-        print(f"🚀 Starting job: {job.get('id', 'unknown')}")
+        print(f"🚀 Starting POC video stitching job: {job.get('id', 'unknown')}")
         start_time = time.time()
 
         # Extract input
@@ -201,36 +234,15 @@ def handler(job: Dict[str, Any]) -> Dict[str, Any]:
         if not video_urls:
             raise ValueError("No video URLs provided")
 
-        # Load models if not already loaded
-        if clip_model is None:
-            load_models()
+        print(f"📋 Processing {len(video_urls)} videos")
 
-        # Process each video
-        results = {
-            "job_id": job_id,
-            "videos_processed": [],
-            "processing_time": 0,
-            "status": "processing",
-        }
-
-        for video_url in video_urls:
-            try:
-                video_result = process_video(video_url, job_id)
-                results["videos_processed"].append(video_result)
-            except Exception as e:
-                print(f"❌ Error processing video {video_url}: {e}")
-                results["videos_processed"].append(
-                    {"video_url": video_url, "error": str(e)}
-                )
-
+        # Process videos
+        result = process_videos(video_urls, job_id)
+        
         # Calculate processing time
         processing_time = time.time() - start_time
-        results["processing_time"] = processing_time
-        results["status"] = "completed"
-
-        # Upload results to S3
-        result_url = upload_results_to_s3(results, job_id)
-        results["result_url"] = result_url
+        result["processing_time"] = processing_time
+        result["job_id"] = job_id
 
         # Send webhook if provided
         if webhook_url:
@@ -238,7 +250,7 @@ def handler(job: Dict[str, Any]) -> Dict[str, Any]:
                 webhook_payload = {
                     "job_id": job_id,
                     "status": "COMPLETED",
-                    "output": results,
+                    "output": result,
                 }
                 requests.post(webhook_url, json=webhook_payload, timeout=10)
                 print(f"✅ Webhook sent to: {webhook_url}")
@@ -246,7 +258,7 @@ def handler(job: Dict[str, Any]) -> Dict[str, Any]:
                 print(f"⚠️ Failed to send webhook: {e}")
 
         print(f"✅ Job completed in {processing_time:.2f} seconds")
-        return results
+        return result
 
     except Exception as e:
         error_msg = f"Job failed: {str(e)}"
@@ -261,9 +273,7 @@ def handler(job: Dict[str, Any]) -> Dict[str, Any]:
                     "status": "FAILED",
                     "error": error_msg,
                 }
-                requests.post(
-                    job_input["webhook_url"], json=webhook_payload, timeout=10
-                )
+                requests.post(job_input["webhook_url"], json=webhook_payload, timeout=10)
             except:
                 pass
 
@@ -272,5 +282,5 @@ def handler(job: Dict[str, Any]) -> Dict[str, Any]:
 
 # Start RunPod serverless worker
 if __name__ == "__main__":
-    print("🚀 Starting RunPod serverless worker...")
+    print("🚀 Starting RunPod POC video stitching worker...")
     runpod.serverless.start({"handler": handler})

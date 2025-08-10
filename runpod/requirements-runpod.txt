@@ -4,22 +4,11 @@ runpod==1.7.6
 # AWS S3
 boto3==1.35.91
 
-# Computer Vision (headless for containers)
+# Video processing (lightweight)
 opencv-python-headless==4.10.0.84
-# pillow - use base image version (11.0.0) to avoid conflicts
 
-# ML Models - Latest compatible versions
-transformers==4.48.1
-torch==2.6.0
-torchvision==0.21.0
-torchaudio==2.6.0
-
-# HTTP requests for webhooks
+# HTTP requests for webhooks  
 requests==2.32.3
 
-# Utilities - Pin exact versions for reproducibility
+# Basic utilities
 numpy==1.26.4
-scipy==1.14.1
-
-# Performance optimizations
-accelerate==1.2.1
