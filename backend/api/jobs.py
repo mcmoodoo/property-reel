@@ -1,23 +1,23 @@
 """Job management endpoints for video processing."""
 
-from fastapi import APIRouter, UploadFile, File, Form, Depends, HTTPException, Request
-from sqlalchemy.orm import Session
-from typing import List, Optional
 import json
 import logging
 import time
 from datetime import datetime
 
+from fastapi import APIRouter, Depends, File, Form, HTTPException, Request, UploadFile
+from sqlalchemy.orm import Session
+
 from database.connection import get_db
-from database.models import ProcessingJob, JobMetrics
-from services.s3_service import s3_service
+from database.models import JobMetrics, ProcessingJob
 from services.runpod_service import runpod_service
+from services.s3_service import s3_service
 from utils.validation import (
-    PropertyData,
     JobResponse,
     JobStatus,
-    validate_video_files,
+    PropertyData,
     validate_job_id,
+    validate_video_files,
 )
 
 logger = logging.getLogger(__name__)
@@ -27,7 +27,7 @@ router = APIRouter()
 @router.post("/", response_model=JobResponse)
 async def create_processing_job(
     request: Request,
-    files: List[UploadFile] = File(..., description="Video files to process"),
+    files: list[UploadFile] = File(..., description="Video files to process"),
     property_data: str = Form(..., description="JSON string of property metadata"),
     db: Session = Depends(get_db),
 ):
@@ -209,7 +209,7 @@ async def get_job_status(job_id: str, db: Session = Depends(get_db)):
 async def list_jobs(
     limit: int = 50,
     offset: int = 0,
-    status: Optional[str] = None,
+    status: str | None = None,
     db: Session = Depends(get_db),
 ):
     """List processing jobs with optional filtering."""

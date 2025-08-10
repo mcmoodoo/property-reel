@@ -1,11 +1,12 @@
 """Database models for the real estate video processing pipeline."""
 
-from sqlalchemy import Column, Integer, String, Text, DateTime, Float, Boolean, JSON
+import uuid
+from datetime import datetime
+from typing import Any
+
+from sqlalchemy import JSON, Column, DateTime, Float, Integer, String, Text
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.sql import func
-from datetime import datetime
-from typing import Optional, Dict, Any
-import uuid
 
 Base = declarative_base()
 
@@ -63,7 +64,7 @@ class ProcessingJob(Base):
     def __repr__(self):
         return f"<ProcessingJob(id='{self.id}', status='{self.status}', video_count={self.video_count})>"
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert model to dictionary."""
         return {
             "job_id": self.id,
@@ -94,10 +95,10 @@ class ProcessingJob(Base):
     @classmethod
     def create_from_property_data(
         cls,
-        property_data: Dict[str, Any],
+        property_data: dict[str, Any],
         video_s3_urls: list,
-        client_ip: Optional[str] = None,
-        user_agent: Optional[str] = None,
+        client_ip: str | None = None,
+        user_agent: str | None = None,
     ) -> "ProcessingJob":
         """Create job from property data and video URLs."""
 
@@ -115,7 +116,7 @@ class ProcessingJob(Base):
             user_agent=user_agent,
         )
 
-    def update_status(self, status: str, error_message: Optional[str] = None):
+    def update_status(self, status: str, error_message: str | None = None):
         """Update job status and timestamp."""
         self.status = status
         self.updated_at = datetime.utcnow()
@@ -125,9 +126,7 @@ class ProcessingJob(Base):
         elif status == "failed" and error_message:
             self.error_message = error_message
 
-    def update_runpod_info(
-        self, runpod_job_id: str, runpod_status: Optional[str] = None
-    ):
+    def update_runpod_info(self, runpod_job_id: str, runpod_status: str | None = None):
         """Update RunPod job information."""
         self.runpod_job_id = runpod_job_id
         if runpod_status:
@@ -136,9 +135,9 @@ class ProcessingJob(Base):
 
     def update_results(
         self,
-        result_urls: Dict[str, Any],
+        result_urls: dict[str, Any],
         clips_count: int = 0,
-        duration: Optional[float] = None,
+        duration: float | None = None,
     ):
         """Update processing results."""
         self.result_s3_urls = result_urls

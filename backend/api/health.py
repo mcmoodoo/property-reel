@@ -1,13 +1,13 @@
 """Health check endpoints for monitoring system status."""
 
+import time
+
 from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
-import time
-from typing import Dict, Any
 
-from database.connection import get_db, db_manager
-from services.s3_service import s3_service
+from database.connection import db_manager, get_db
 from services.runpod_service import runpod_service
+from services.s3_service import s3_service
 from utils.config import settings
 
 router = APIRouter()

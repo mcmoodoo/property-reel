@@ -1,17 +1,17 @@
 """Main FastAPI application for real estate video processing pipeline."""
 
-from fastapi import FastAPI, Request
-from fastapi.middleware.cors import CORSMiddleware
-from fastapi.middleware.trustedhost import TrustedHostMiddleware
-from fastapi.responses import JSONResponse
 import logging
 import time
 from contextlib import asynccontextmanager
 
-from utils.config import settings
-from database.connection import db_manager
-from api import health, jobs, webhook
+from fastapi import FastAPI, Request
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.middleware.trustedhost import TrustedHostMiddleware
+from fastapi.responses import JSONResponse
 
+from api import health, jobs, webhook
+from database.connection import db_manager
+from utils.config import settings
 
 # Configure logging
 logging.basicConfig(

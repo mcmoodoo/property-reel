@@ -1,12 +1,12 @@
 """S3 service for handling video uploads and results storage."""
 
-import boto3
 import logging
-import hashlib
 import os
-from typing import List, Optional, Dict
+
+import boto3
 from botocore.exceptions import ClientError, NoCredentialsError
 from fastapi import UploadFile
+
 from utils.config import settings
 
 logger = logging.getLogger(__name__)
@@ -77,8 +77,8 @@ class S3Service:
             raise
 
     async def upload_multiple_videos(
-        self, files: List[UploadFile], job_id: str
-    ) -> List[str]:
+        self, files: list[UploadFile], job_id: str
+    ) -> list[str]:
         """Upload multiple video files to S3."""
 
         s3_urls = []
@@ -98,7 +98,7 @@ class S3Service:
         return s3_urls
 
     async def generate_presigned_url(
-        self, s3_key: str, bucket: Optional[str] = None, expiration: int = 3600
+        self, s3_key: str, bucket: str | None = None, expiration: int = 3600
     ) -> str:
         """Generate presigned URL for file access."""
 
@@ -140,7 +140,7 @@ class S3Service:
         except ClientError:
             return False
 
-    async def list_result_files(self, job_id: str) -> Dict[str, List[str]]:
+    async def list_result_files(self, job_id: str) -> dict[str, list[str]]:
         """List all result files for a job."""
 
         if not self.s3_client:
@@ -199,7 +199,7 @@ class S3Service:
         except ClientError as e:
             logger.warning(f"Failed to cleanup uploads for job {job_id}: {str(e)}")
 
-    def validate_configuration(self) -> Dict[str, bool]:
+    def validate_configuration(self) -> dict[str, bool]:
         """Validate S3 service configuration."""
 
         config_status = {

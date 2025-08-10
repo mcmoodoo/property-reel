@@ -1,7 +1,6 @@
 #!/usr/bin/env python
 """Simple runner script for the backend API."""
 
-import os
 import sys
 from pathlib import Path
 
@@ -10,7 +9,7 @@ def check_env():
     """Check if .env file exists, create from example if not."""
     env_file = Path(".env")
     env_example = Path(".env.example")
-    
+
     if not env_file.exists():
         if env_example.exists():
             print("⚠️  No .env file found. Creating from .env.example...")
@@ -27,25 +26,26 @@ def check_env():
 def run():
     """Run the FastAPI application."""
     check_env()
-    
+
     # Import here to ensure .env is loaded
-    from utils.config import settings
     import uvicorn
-    
+
+    from utils.config import settings
+
     print("🚀 Starting Real Estate Video Processing Backend")
     print(f"📍 API: http://{settings.api_host}:{settings.api_port}")
-    
+
     if settings.debug:
         print(f"📚 Docs: http://localhost:{settings.api_port}/docs")
         print("⚠️  Debug mode enabled - auto-reload is active")
-    
+
     uvicorn.run(
         "main:app",
         host=settings.api_host,
         port=settings.api_port,
         reload=settings.debug,
         log_level="debug" if settings.debug else "info",
-        access_log=True
+        access_log=True,
     )
 
 

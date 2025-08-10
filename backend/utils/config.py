@@ -1,9 +1,7 @@
 """Configuration management for the real estate pipeline backend."""
 
-import os
-from typing import List
-from pydantic_settings import BaseSettings
 from pydantic import Field
+from pydantic_settings import BaseSettings
 
 
 class Settings(BaseSettings):
@@ -37,7 +35,7 @@ class Settings(BaseSettings):
     webhook_base_url: str = Field(default="http://localhost:8000/webhook")
 
     @property
-    def cors_origins_list(self) -> List[str]:
+    def cors_origins_list(self) -> list[str]:
         """Convert CORS origins string to list."""
         return [origin.strip() for origin in self.cors_origins.split(",")]
 

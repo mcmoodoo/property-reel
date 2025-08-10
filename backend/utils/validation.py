@@ -1,29 +1,29 @@
 """Input validation utilities."""
 
-from typing import List, Optional
-from pydantic import BaseModel, Field, validator
-from fastapi import UploadFile
 import mimetypes
+
+from fastapi import UploadFile
+from pydantic import BaseModel, Field, validator
 
 
 class PropertyData(BaseModel):
     """Property metadata validation model."""
 
     property_type: str = Field(default="residential", description="Type of property")
-    bedrooms: Optional[int] = Field(
+    bedrooms: int | None = Field(
         default=None, ge=0, le=20, description="Number of bedrooms"
     )
-    bathrooms: Optional[float] = Field(
+    bathrooms: float | None = Field(
         default=None, ge=0, le=20, description="Number of bathrooms"
     )
-    square_feet: Optional[int] = Field(
+    square_feet: int | None = Field(
         default=None, ge=100, le=50000, description="Square footage"
     )
-    price: Optional[int] = Field(default=None, ge=0, description="Property price")
-    address: Optional[str] = Field(
+    price: int | None = Field(default=None, ge=0, description="Property price")
+    address: str | None = Field(
         default=None, max_length=500, description="Property address"
     )
-    description: Optional[str] = Field(
+    description: str | None = Field(
         default=None, max_length=2000, description="Property description"
     )
 
@@ -57,13 +57,13 @@ class JobStatus(BaseModel):
     job_id: str
     status: str
     progress: int = Field(ge=0, le=100)
-    result_url: Optional[str] = None
-    error_message: Optional[str] = None
-    created_at: Optional[str] = None
-    completed_at: Optional[str] = None
+    result_url: str | None = None
+    error_message: str | None = None
+    created_at: str | None = None
+    completed_at: str | None = None
 
 
-def validate_video_files(files: List[UploadFile]) -> List[str]:
+def validate_video_files(files: list[UploadFile]) -> list[str]:
     """Validate uploaded video files."""
 
     errors = []

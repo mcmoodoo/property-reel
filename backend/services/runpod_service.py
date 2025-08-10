@@ -1,8 +1,9 @@
 """RunPod service for managing serverless ML processing jobs."""
 
-import requests
 import logging
-from typing import Dict, List, Optional
+
+import requests
+
 from utils.config import settings
 
 logger = logging.getLogger(__name__)
@@ -11,7 +12,7 @@ logger = logging.getLogger(__name__)
 class RunPodService:
     """Handle all RunPod serverless interactions - NO ML models here."""
 
-    def __init__(self, api_key: Optional[str] = None):
+    def __init__(self, api_key: str | None = None):
         """Initialize RunPod service."""
         self.api_key = api_key or settings.runpod_api_key
         self.base_url = "https://api.runpod.ai/v2"
@@ -23,7 +24,7 @@ class RunPodService:
             logger.warning("RunPod endpoint ID not configured")
 
     async def submit_job(
-        self, video_s3_urls: List[str], property_data: Dict, job_id: str
+        self, video_s3_urls: list[str], property_data: dict, job_id: str
     ) -> str:
         """Submit processing job to RunPod serverless function."""
 
@@ -75,7 +76,7 @@ class RunPodService:
             logger.error(f"RunPod job submission error: {str(e)}")
             raise
 
-    async def get_job_status(self, runpod_job_id: str) -> Dict:
+    async def get_job_status(self, runpod_job_id: str) -> dict:
         """Check RunPod job status."""
 
         if not self.api_key or not self.endpoint_id:
@@ -126,7 +127,7 @@ class RunPodService:
             logger.error(f"Failed to cancel RunPod job: {str(e)}")
             return False
 
-    def validate_configuration(self) -> Dict[str, bool]:
+    def validate_configuration(self) -> dict[str, bool]:
         """Validate RunPod service configuration."""
 
         return {

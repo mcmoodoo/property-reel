@@ -1,15 +1,14 @@
 """Webhook endpoints for receiving RunPod job completion notifications."""
 
-from fastapi import APIRouter, Request, HTTPException, Depends, BackgroundTasks
-from sqlalchemy.orm import Session
-import json
 import logging
-from typing import Dict, Any
 import time
+from typing import Any
+
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Request
+from sqlalchemy.orm import Session
 
 from database.connection import get_db
-from database.models import ProcessingJob, JobMetrics
-from services.s3_service import s3_service
+from database.models import JobMetrics, ProcessingJob
 from utils.validation import validate_job_id
 
 logger = logging.getLogger(__name__)
@@ -56,7 +55,7 @@ async def runpod_webhook(
 
 
 async def process_runpod_webhook(
-    job_id: str, payload: Dict[Any, Any], db_session: Session
+    job_id: str, payload: dict[Any, Any], db_session: Session
 ):
     """Process RunPod webhook payload in background."""
 
@@ -99,7 +98,7 @@ async def process_runpod_webhook(
 
 
 async def handle_job_completion(
-    job: ProcessingJob, output: Dict[Any, Any], db: Session
+    job: ProcessingJob, output: dict[Any, Any], db: Session
 ):
     """Handle successful job completion."""
 
