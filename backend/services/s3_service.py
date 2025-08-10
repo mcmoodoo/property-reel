@@ -2,6 +2,7 @@
 
 import logging
 import os
+from typing import List
 
 import boto3
 from botocore.exceptions import ClientError, NoCredentialsError
@@ -18,12 +19,19 @@ class S3Service:
     def __init__(self):
         """Initialize S3 client."""
         try:
-            self.s3_client = boto3.client(
-                "s3",
-                aws_access_key_id=settings.aws_access_key_id,
-                aws_secret_access_key=settings.aws_secret_access_key,
-                region_name=settings.aws_region,
-            )
+            # Try explicit credentials first, then fall back to AWS credential chain
+            if settings.aws_access_key_id and settings.aws_secret_access_key:
+                self.s3_client = boto3.client(
+                    "s3",
+                    aws_access_key_id=settings.aws_access_key_id,
+                    aws_secret_access_key=settings.aws_secret_access_key,
+                    region_name=settings.aws_region,
+                )
+                logger.info("Using S3 credentials from environment variables")
+            else:
+                # Use AWS credential chain (CLI, IAM roles, etc.)
+                self.s3_client = boto3.client("s3", region_name=settings.aws_region)
+                logger.info("Using S3 credentials from AWS credential chain")
 
             self.video_bucket = settings.s3_bucket_videos
             self.results_bucket = settings.s3_bucket_results
@@ -31,6 +39,39 @@ class S3Service:
         except NoCredentialsError:
             logger.warning("AWS credentials not configured")
             self.s3_client = None
+        except Exception as e:
+            logger.error(f"Failed to initialize S3 client: {e}")
+            self.s3_client = None
+
+    def validate_file(self, file: UploadFile) -> tuple[bool, str]:
+        """Validate uploaded file for video processing."""
+        
+        # Check file size (max 500MB)
+        max_size = 500 * 1024 * 1024  # 500MB in bytes
+        if hasattr(file, 'size') and file.size and file.size > max_size:
+            return False, f"File size {file.size / 1024 / 1024:.1f}MB exceeds maximum {max_size / 1024 / 1024}MB"
+        
+        # Check file extension
+        allowed_extensions = {'.mp4', '.avi', '.mov', '.mkv', '.m4v', '.webm', '.flv'}
+        file_extension = os.path.splitext(file.filename)[1].lower()
+        
+        if file_extension not in allowed_extensions:
+            return False, f"File type '{file_extension}' not supported. Allowed: {', '.join(allowed_extensions)}"
+        
+        # Check content type
+        allowed_content_types = {
+            'video/mp4', 'video/avi', 'video/quicktime', 'video/x-msvideo', 
+            'video/x-matroska', 'video/webm', 'video/x-flv'
+        }
+        
+        if file.content_type and file.content_type not in allowed_content_types:
+            logger.warning(f"Unexpected content type: {file.content_type} for {file.filename}")
+        
+        # Check filename
+        if not file.filename or len(file.filename) > 255:
+            return False, "Invalid filename"
+        
+        return True, "File validation passed"
 
     async def upload_video_file(
         self, file: UploadFile, job_id: str, file_index: int
@@ -39,6 +80,11 @@ class S3Service:
 
         if not self.s3_client:
             raise ValueError("S3 client not configured")
+        
+        # Validate file before upload
+        is_valid, validation_message = self.validate_file(file)
+        if not is_valid:
+            raise ValueError(f"File validation failed: {validation_message}")
 
         # Generate unique filename
         file_extension = os.path.splitext(file.filename)[1]
@@ -70,11 +116,24 @@ class S3Service:
             return s3_url
 
         except ClientError as e:
-            logger.error(f"Failed to upload video file: {str(e)}")
-            raise Exception(f"S3 upload failed: {str(e)}")
+            error_code = e.response.get('Error', {}).get('Code', 'Unknown')
+            error_message = e.response.get('Error', {}).get('Message', str(e))
+            
+            if error_code == 'NoSuchBucket':
+                logger.error(f"Bucket {self.video_bucket} does not exist")
+                raise Exception(f"Upload bucket not found: {self.video_bucket}")
+            elif error_code == 'AccessDenied':
+                logger.error(f"Access denied to bucket {self.video_bucket}")
+                raise Exception("Insufficient permissions for video upload")
+            elif error_code == 'InvalidRequest':
+                logger.error(f"Invalid upload request: {error_message}")
+                raise Exception(f"Invalid upload request: {error_message}")
+            else:
+                logger.error(f"S3 upload failed [{error_code}]: {error_message}")
+                raise Exception(f"S3 upload failed: {error_message}")
         except Exception as e:
             logger.error(f"Video upload error: {str(e)}")
-            raise
+            raise Exception(f"Upload failed: {str(e)}")
 
     async def upload_multiple_videos(
         self, files: list[UploadFile], job_id: str
@@ -202,10 +261,18 @@ class S3Service:
     def validate_configuration(self) -> dict[str, bool]:
         """Validate S3 service configuration."""
 
+        # Check if credentials are available (either env vars or AWS credential chain)
+        credentials_available = bool(settings.aws_access_key_id and settings.aws_secret_access_key)
+        if not credentials_available:
+            # Test if AWS credential chain works
+            try:
+                boto3.Session().get_credentials()
+                credentials_available = True
+            except:
+                pass
+
         config_status = {
-            "credentials_configured": bool(
-                settings.aws_access_key_id and settings.aws_secret_access_key
-            ),
+            "credentials_configured": credentials_available,
             "buckets_configured": bool(
                 settings.s3_bucket_videos and settings.s3_bucket_results
             ),

@@ -4,8 +4,12 @@
 import asyncio
 import logging
 
-from services.s3_service import s3_service
+# Reload the service to pick up new configuration
 from utils.config import settings
+from services.s3_service import S3Service
+
+# Create a fresh instance with updated config
+s3_service = S3Service()
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)

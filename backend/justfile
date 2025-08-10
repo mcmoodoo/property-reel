@@ -63,6 +63,22 @@ test-s3:
 s3-setup:
     uv run python -c "import asyncio; from services.s3_service import s3_service; asyncio.run(s3_service.setup_buckets())"
 
+# Test S3 upload functionality
+test-upload:
+    uv run python test_upload.py
+
+# Test S3 download functionality
+test-download:
+    uv run python test_download.py
+
+# Test S3 validation and error handling
+test-s3-validation:
+    uv run python test_s3_validation.py
+
+# Run all S3 tests
+test-s3-all: test-s3 test-upload test-download test-s3-validation
+    @echo "🎉 All S3 tests completed!"
+
 # === Database Management ===
 
 # Start PostgreSQL in Podman (for local development)

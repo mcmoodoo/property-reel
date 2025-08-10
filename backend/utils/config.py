@@ -15,8 +15,8 @@ class Settings(BaseSettings):
     aws_access_key_id: str = Field(default="")
     aws_secret_access_key: str = Field(default="")
     aws_region: str = Field(default="us-east-1")
-    s3_bucket_videos: str = Field(default="real-estate-videos")
-    s3_bucket_results: str = Field(default="real-estate-results")
+    s3_bucket_videos: str = Field(default="unpin-real-estate-videos")
+    s3_bucket_results: str = Field(default="unpin-real-estate-results")
 
     # RunPod
     runpod_api_key: str = Field(default="")
