@@ -25,7 +25,7 @@ RUN pip install --upgrade pip setuptools wheel && \
     pip install torch==2.6.0 torchvision==0.21.0 torchaudio==2.6.0 \
         --index-url https://download.pytorch.org/whl/cu124 && \
     pip install numpy==1.26.4 && \
-    pip install -r requirements-runpod.txt
+    pip install --only-binary=all --no-compile -r requirements-runpod.txt
 
 # Pre-download CLIP models to avoid cold start delays
 RUN python -c "\

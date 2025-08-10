@@ -6,7 +6,7 @@ boto3==1.35.91
 
 # Computer Vision (headless for containers)
 opencv-python-headless==4.10.0.84
-pillow==11.1.0
+# pillow - use base image version (11.0.0) to avoid conflicts
 
 # ML Models - Latest compatible versions
 transformers==4.48.1
