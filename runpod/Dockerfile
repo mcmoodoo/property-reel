@@ -25,8 +25,8 @@ RUN pip install --upgrade pip
 # Copy requirements first (for better caching)
 COPY requirements-runpod.txt .
 
-# Install Python dependencies (upgrade PyTorch first to meet transformers requirements)
-RUN pip install --no-cache-dir torch>=2.1.1 torchvision>=0.16.0 --index-url https://download.pytorch.org/whl/cu121
+# Install Python dependencies (upgrade PyTorch first to meet transformers security requirements)
+RUN pip install --no-cache-dir torch>=2.6.0 torchvision>=0.21.0 "numpy<2.0.0" --index-url https://download.pytorch.org/whl/cu121
 RUN pip install --no-cache-dir -r requirements-runpod.txt
 
 # Pre-download ML models to speed up cold starts

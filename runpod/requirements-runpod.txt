@@ -10,12 +10,12 @@ pillow>=10.2.0
 
 # ML Models  
 transformers>=4.36.0
-torch>=2.1.1
-torchvision>=0.16.0
+torch>=2.6.0
+torchvision>=0.21.0
 
 # HTTP requests for webhooks
 requests>=2.31.0
 
 # Utilities
-numpy>=1.24.0
+numpy<2.0.0
 scipy>=1.11.0
