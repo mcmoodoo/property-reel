@@ -162,6 +162,112 @@ health:
 health-detailed:
     curl -s http://localhost:8000/health/detailed | python -m json.tool
 
+# === RunPod Container Management with Podman ===
+
+# Build RunPod container with Podman
+runpod-build:
+    #!/bin/bash
+    echo "🐳 Building RunPod container with Podman..."
+    cd runpod && podman build -t real-estate-processor:latest .
+    echo "✅ Container built successfully"
+
+# Tag container for Docker Hub (or your registry)
+runpod-tag REGISTRY_USER:
+    #!/bin/bash
+    echo "🏷️  Tagging container for registry..."
+    podman tag real-estate-processor:latest {{REGISTRY_USER}}/real-estate-processor:latest
+    podman tag real-estate-processor:latest {{REGISTRY_USER}}/real-estate-processor:$(date +%Y%m%d-%H%M%S)
+    echo "✅ Tagged as {{REGISTRY_USER}}/real-estate-processor:latest"
+
+# Push container to registry with Podman
+runpod-push REGISTRY_USER:
+    #!/bin/bash
+    echo "📤 Pushing container to registry..."
+    podman push {{REGISTRY_USER}}/real-estate-processor:latest
+    echo "✅ Pushed to {{REGISTRY_USER}}/real-estate-processor:latest"
+
+# Build and push in one command
+runpod-deploy REGISTRY_USER: runpod-build
+    #!/bin/bash
+    echo "🚀 Deploying RunPod container..."
+    podman tag real-estate-processor:latest {{REGISTRY_USER}}/real-estate-processor:latest
+    podman push {{REGISTRY_USER}}/real-estate-processor:latest
+    echo "✅ Container deployed to {{REGISTRY_USER}}/real-estate-processor:latest"
+    echo ""
+    echo "📝 Next steps:"
+    echo "1. Update RunPod template with image: {{REGISTRY_USER}}/real-estate-processor:latest"
+    echo "2. Restart RunPod endpoint to use new image"
+
+# Test container locally with Podman
+runpod-test-local:
+    #!/bin/bash
+    echo "🧪 Testing RunPod container locally..."
+    cd runpod && podman run --rm \
+        -e AWS_ACCESS_KEY_ID="$AWS_ACCESS_KEY_ID" \
+        -e AWS_SECRET_ACCESS_KEY="$AWS_SECRET_ACCESS_KEY" \
+        -e AWS_REGION="us-east-1" \
+        -e S3_BUCKET_VIDEOS="unpin-real-estate-videos" \
+        -e S3_BUCKET_RESULTS="unpin-real-estate-results" \
+        real-estate-processor:latest \
+        python -c "import handler; print('✅ Handler imports successfully')"
+
+# Update RunPod template with new image
+runpod-update-image TEMPLATE_ID IMAGE:
+    uv run python update_runpod_image.py {{TEMPLATE_ID}} {{IMAGE}}
+
+# Complete deployment workflow
+runpod-full-deploy REGISTRY_USER: runpod-build
+    #!/bin/bash
+    echo "🚀 Full RunPod deployment with Podman..."
+    
+    # Build and push
+    podman tag real-estate-processor:latest {{REGISTRY_USER}}/real-estate-processor:latest
+    podman push {{REGISTRY_USER}}/real-estate-processor:latest
+    
+    # Update template (using the template ID from earlier)
+    TEMPLATE_ID="fmhv2snzok"
+    uv run python update_runpod_image.py $TEMPLATE_ID {{REGISTRY_USER}}/real-estate-processor:latest
+    
+    echo "✅ Deployment complete!"
+    echo "📝 Your RunPod endpoint will use the new image on next cold start"
+
+# GitHub Container Registry specific commands
+ghcr-login GITHUB_USERNAME:
+    #!/bin/bash
+    echo "🔐 Logging into GitHub Container Registry..."
+    echo "Enter your GitHub Personal Access Token (with packages:write scope):"
+    podman login ghcr.io -u {{GITHUB_USERNAME}}
+
+# Build and push to GHCR
+ghcr-deploy GITHUB_USERNAME: runpod-build
+    #!/bin/bash
+    echo "🚀 Deploying to GitHub Container Registry..."
+    
+    # Tag for GHCR
+    podman tag real-estate-processor:latest ghcr.io/{{GITHUB_USERNAME}}/real-estate-processor:latest
+    podman tag real-estate-processor:latest ghcr.io/{{GITHUB_USERNAME}}/real-estate-processor:$(date +%Y%m%d-%H%M%S)
+    
+    # Push to GHCR
+    echo "📤 Pushing to ghcr.io/{{GITHUB_USERNAME}}/real-estate-processor..."
+    podman push ghcr.io/{{GITHUB_USERNAME}}/real-estate-processor:latest
+    
+    # Update RunPod template
+    TEMPLATE_ID="fmhv2snzok"
+    echo "🔄 Updating RunPod template..."
+    uv run python update_runpod_image.py $TEMPLATE_ID ghcr.io/{{GITHUB_USERNAME}}/real-estate-processor:latest
+    
+    echo "✅ Deployment complete!"
+    echo "📝 Image: ghcr.io/{{GITHUB_USERNAME}}/real-estate-processor:latest"
+    echo "📝 Your RunPod endpoint will use the new image on next cold start"
+
+# Make GHCR image public (optional)
+ghcr-make-public GITHUB_USERNAME REPO_NAME:
+    #!/bin/bash
+    echo "📢 Making GHCR image public..."
+    echo "Go to: https://github.com/{{GITHUB_USERNAME}}?tab=packages"
+    echo "Find 'real-estate-processor' and change visibility to Public"
+    echo "Or set in package settings: https://github.com/users/{{GITHUB_USERNAME}}/packages/container/{{REPO_NAME}}/settings"
+
 # === Podman ===
 
 # Build Podman image
