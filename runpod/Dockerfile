@@ -1,5 +1,5 @@
 # RunPod ML inference container for real estate video processing
-FROM pytorch/pytorch:2.1.0-cuda12.1-cudnn8-devel
+FROM pytorch/pytorch:2.1.0-cuda12.1-cudnn8-runtime
 
 # Set working directory
 WORKDIR /app
@@ -10,16 +10,14 @@ ENV TZ=UTC
 
 # Install system dependencies
 RUN ln -snf /usr/share/zoneinfo/$TZ /etc/localtime && echo $TZ > /etc/timezone && \
-    apt-get update && apt-get install -y \
+    apt-get update && apt-get install -y --no-install-recommends \
     ffmpeg \
     libsm6 \
     libxext6 \
     libxrender1 \
     libgomp1 \
     libglib2.0-0 \
-    wget \
-    git \
-    && rm -rf /var/lib/apt/lists/*
+    && apt-get clean && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
 
 # Upgrade pip
 RUN pip install --upgrade pip

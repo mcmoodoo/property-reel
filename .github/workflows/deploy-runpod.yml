@@ -2,7 +2,7 @@ name: Deploy to RunPod
 
 on:
   push:
-    branches: [dev, main]
+    branches: [dev]
     paths:
       - "runpod/**"
       - ".github/workflows/deploy-runpod.yml"
@@ -20,6 +20,15 @@ jobs:
       packages: write
 
     steps:
+      - name: Free up disk space
+        run: |
+          sudo rm -rf /usr/share/dotnet
+          sudo rm -rf /usr/local/lib/android
+          sudo rm -rf /opt/ghc
+          sudo rm -rf /opt/hostedtoolcache/CodeQL
+          sudo docker system prune -af
+          df -h
+      
       - name: Checkout code
         uses: actions/checkout@v4
 
@@ -44,7 +53,7 @@ jobs:
             type=semver,pattern={{version}}
             type=semver,pattern={{major}}.{{minor}}
             type=sha
-            type=raw,value=latest,enable={{is_default_branch}}
+            type=raw,value=latest,enable=${{ github.ref == 'refs/heads/dev' }}
 
       - name: Build and push Docker image
         uses: docker/build-push-action@v5
@@ -58,7 +67,7 @@ jobs:
           cache-to: type=gha,mode=max
 
       - name: Update RunPod Template
-        if: github.ref == 'refs/heads/main'
+        if: github.ref == 'refs/heads/dev'
         env:
           RUNPOD_API_KEY: ${{ secrets.RUNPOD_API_KEY }}
           TEMPLATE_ID: fmhv2snzok
