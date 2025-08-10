@@ -1,0 +1,19 @@
+# Ignore everything except what we need
+*
+
+# Include only necessary files
+!handler.py
+!requirements-runpod.txt
+!Dockerfile
+
+# Explicitly exclude common artifacts
+**/__pycache__
+**/*.pyc
+**/*.pyo
+**/*.pyd
+**/.git
+**/.gitignore
+**/README.md
+**/*.log
+**/.DS_Store
+**/Thumbs.db
