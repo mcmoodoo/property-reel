@@ -238,6 +238,68 @@ class S3Service:
         except ClientError:
             return False
 
+    async def create_bucket_if_not_exists(self, bucket_name: str) -> bool:
+        """Create S3 bucket if it doesn't exist."""
+        
+        if not self.s3_client:
+            raise ValueError("S3 client not configured")
+            
+        try:
+            # Check if bucket exists
+            self.s3_client.head_bucket(Bucket=bucket_name)
+            logger.info(f"Bucket {bucket_name} already exists")
+            return True
+            
+        except ClientError as e:
+            error_code = int(e.response['Error']['Code'])
+            
+            if error_code == 404:
+                # Bucket doesn't exist, create it
+                try:
+                    if settings.aws_region == 'us-east-1':
+                        # us-east-1 doesn't need LocationConstraint
+                        self.s3_client.create_bucket(Bucket=bucket_name)
+                    else:
+                        self.s3_client.create_bucket(
+                            Bucket=bucket_name,
+                            CreateBucketConfiguration={
+                                'LocationConstraint': settings.aws_region
+                            }
+                        )
+                    
+                    # Enable versioning for better data protection
+                    self.s3_client.put_bucket_versioning(
+                        Bucket=bucket_name,
+                        VersioningConfiguration={'Status': 'Enabled'}
+                    )
+                    
+                    logger.info(f"✅ Created S3 bucket: {bucket_name}")
+                    return True
+                    
+                except ClientError as create_error:
+                    logger.error(f"Failed to create bucket {bucket_name}: {create_error}")
+                    return False
+            else:
+                logger.error(f"Access denied to bucket {bucket_name}: {e}")
+                return False
+
+    async def setup_buckets(self) -> dict[str, bool]:
+        """Create required S3 buckets if they don't exist."""
+        
+        results = {}
+        
+        if self.video_bucket:
+            results[self.video_bucket] = await self.create_bucket_if_not_exists(
+                self.video_bucket
+            )
+            
+        if self.results_bucket:
+            results[self.results_bucket] = await self.create_bucket_if_not_exists(
+                self.results_bucket
+            )
+            
+        return results
+
 
 # Global service instance
 s3_service = S3Service()

@@ -59,6 +59,10 @@ test-cov:
 test-s3:
     uv run python test_s3.py
 
+# Create S3 buckets if they don't exist
+s3-setup:
+    uv run python -c "import asyncio; from services.s3_service import s3_service; asyncio.run(s3_service.setup_buckets())"
+
 # === Database Management ===
 
 # Start PostgreSQL in Podman (for local development)
