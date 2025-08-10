@@ -73,6 +73,8 @@ jobs:
           TEMPLATE_ID: fmhv2snzok
         run: |
           echo "Updating RunPod template with new image..."
+          echo "Previous image: $(curl -s -H "Authorization: Bearer $RUNPOD_API_KEY" "https://rest.runpod.io/v1/templates/$TEMPLATE_ID" | jq -r '.imageName')"
+          echo "New image: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest"
           curl -X PATCH "https://rest.runpod.io/v1/templates/$TEMPLATE_ID" \
             -H "Authorization: Bearer $RUNPOD_API_KEY" \
             -H "Content-Type: application/json" \
