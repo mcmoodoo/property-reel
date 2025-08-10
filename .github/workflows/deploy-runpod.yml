@@ -4,7 +4,7 @@ on:
   push:
     branches: [dev, main]
     paths:
-      - "backend/runpod/**"
+      - "runpod/**"
       - ".github/workflows/deploy-runpod.yml"
   workflow_dispatch:
 
@@ -49,8 +49,8 @@ jobs:
       - name: Build and push Docker image
         uses: docker/build-push-action@v5
         with:
-          context: ./backend/runpod
-          file: ./backend/runpod/Dockerfile
+          context: ./runpod
+          file: ./runpod/Dockerfile
           push: true
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}

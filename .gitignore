@@ -14,16 +14,12 @@ dist/
 build/
 
 # Alembic cache
-backend/alembic/__pycache__/
-backend/alembic/versions/__pycache__/
+alembic/__pycache__/
+alembic/versions/__pycache__/
 
 # Backend specific
-backend/.env
-backend/*.db
-backend/*.sqlite
-backend/*.sqlite3
-backend/logs/
-backend/.requirements_installed
+logs/
+.requirements_installed
 
 # Database
 *.db

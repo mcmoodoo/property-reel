@@ -23,7 +23,7 @@ React App    FastAPI      GPU Processing      All ML Models    S3 Storage
 
 ### **1.1 Backend Architecture (No ML Models)**
 ```
-backend/ - Pure API and job management
+root/ - Pure API and job management
 ├── api/
 │   ├── main.py              # FastAPI app
 │   ├── routes/              # API endpoints
@@ -42,7 +42,7 @@ backend/ - Pure API and job management
 
 ### **1.2 Lightweight Backend Dependencies**
 ```python
-# backend/requirements.txt - NO ML MODELS
+# requirements.txt - NO ML MODELS
 fastapi>=0.104.0
 uvicorn>=0.24.0
 sqlalchemy>=2.0.0
@@ -57,7 +57,7 @@ python-multipart>=0.0.6     # File uploads
 
 ### **1.3 RunPod Service Layer**
 ```python
-# backend/services/runpod_service.py
+# services/runpod_service.py
 import requests
 from typing import Dict, List
 import logging
@@ -132,7 +132,7 @@ class RunPodService:
 
 ### **2.1 Main API Endpoints**
 ```python
-# backend/api/main.py
+# api/main.py
 from fastapi import FastAPI, UploadFile, File, BackgroundTasks
 from fastapi.middleware.cors import CORSMiddleware
 from typing import List
@@ -275,7 +275,7 @@ async def runpod_webhook(job_id: str, payload: dict):
 
 ### **2.2 Database Models**
 ```python
-# backend/database/models.py
+# database/models.py
 from sqlalchemy import Column, String, Integer, DateTime, JSON, Text
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.dialects.postgresql import UUID
@@ -317,7 +317,7 @@ class ProcessingJob(Base):
 
 ### **2.3 Job Management Service**
 ```python
-# backend/services/job_tracker.py
+# services/job_tracker.py
 from database.models import ProcessingJob
 from sqlalchemy.orm import Session
 from database.connection import get_db
@@ -919,7 +919,7 @@ Resources:
 
 ### **7.1 Performance Monitoring**
 ```python
-# backend/monitoring/metrics.py
+# monitoring/metrics.py
 import time
 import logging
 from datadog import DogStatsdClient
@@ -961,7 +961,7 @@ class PerformanceMonitor:
 
 ### **7.2 User Analytics**
 ```python
-# backend/analytics/tracking.py
+# analytics/tracking.py
 class UserAnalytics:
     """Track user behavior and success metrics"""
     

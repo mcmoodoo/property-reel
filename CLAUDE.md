@@ -16,9 +16,6 @@ This is a Real Estate Video Processing Pipeline that automatically creates profe
 
 ### Backend Development
 ```bash
-# Navigate to backend
-cd backend/
-
 # Quick setup (installs deps + creates .env)
 just setup
 
@@ -66,7 +63,7 @@ Frontend → Backend API → RunPod Serverless → ML Pipeline → Results
 React      FastAPI       GPU Processing    All AI Models  S3 Storage
 ```
 
-### Backend Structure (`backend/`)
+### Project Structure
 - **`main.py`** - FastAPI application entry point
 - **`api/`** - REST API endpoints (health, jobs, webhooks)
 - **`database/`** - SQLAlchemy models and connection management
