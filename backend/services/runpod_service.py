@@ -15,7 +15,7 @@ class RunPodService:
     def __init__(self, api_key: str | None = None):
         """Initialize RunPod service."""
         self.api_key = api_key or settings.runpod_api_key
-        self.base_url = "https://api.runpod.ai/v2"
+        self.base_url = "https://rest.runpod.io/v1"
         self.endpoint_id = settings.runpod_endpoint_id
 
         if not self.api_key:
@@ -52,7 +52,7 @@ class RunPodService:
             )
 
             response = requests.post(
-                f"{self.base_url}/{self.endpoint_id}/run",
+                f"{self.base_url}/endpoints/{self.endpoint_id}/run",
                 json=payload,
                 headers=headers,
                 timeout=30,
@@ -89,7 +89,7 @@ class RunPodService:
 
         try:
             response = requests.get(
-                f"{self.base_url}/{self.endpoint_id}/status/{runpod_job_id}",
+                f"{self.base_url}/endpoints/{self.endpoint_id}/requests/{runpod_job_id}",
                 headers=headers,
                 timeout=10,
             )
@@ -114,7 +114,7 @@ class RunPodService:
 
         try:
             response = requests.post(
-                f"{self.base_url}/{self.endpoint_id}/cancel/{runpod_job_id}",
+                f"{self.base_url}/endpoints/{self.endpoint_id}/requests/{runpod_job_id}/cancel",
                 headers=headers,
                 timeout=10,
             )
@@ -148,8 +148,8 @@ class RunPodService:
                 "Content-Type": "application/json",
             }
 
-            # Test with a simple API call
-            response = requests.get(f"{self.base_url}/user", headers=headers, timeout=5)
+            # Test with a simple API call (list endpoints)
+            response = requests.get(f"{self.base_url}/endpoints", headers=headers, timeout=5)
 
             return response.status_code == 200
 
