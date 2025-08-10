@@ -126,18 +126,7 @@ env-check:
 
 # Show configuration status (without secrets)
 config:
-    uv run python -c "
-import json
-from utils.config import settings
-config = {
-    'database': bool(settings.database_url),
-    'redis': bool(settings.redis_url),
-    's3_configured': bool(settings.aws_access_key_id and settings.aws_secret_access_key),
-    'runpod_configured': bool(settings.runpod_api_key and settings.runpod_endpoint_id),
-    'debug': settings.debug,
-    'api_port': settings.api_port
-}
-print(json.dumps(config, indent=2))"
+    uv run python -c "import json; from utils.config import settings; config = {'database': bool(settings.database_url), 'redis': bool(settings.redis_url), 's3_configured': bool(settings.aws_access_key_id and settings.aws_secret_access_key), 'runpod_configured': bool(settings.runpod_api_key and settings.runpod_endpoint_id), 'debug': settings.debug, 'api_port': settings.api_port}; print(json.dumps(config, indent=2))"
 
 # === Health Checks ===
 
