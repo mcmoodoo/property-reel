@@ -13,19 +13,46 @@ env/
 dist/
 build/
 
-# UV
-uv.lock
+# Backend specific
+backend/.env
+backend/*.db
+backend/*.sqlite
+backend/*.sqlite3
+backend/logs/
+backend/.requirements_installed
 
-# Project specific
+# Database
+*.db
+*.sqlite
+*.sqlite3
+
+# Project specific - old pipeline artifacts
 cache/
 frames/
 output/
 videos/
+config/
+src/
+tests/
+scripts/
 *.mp4
 *.MP4
 *.avi
 *.mov
 *.mkv
+*.m4v
+*.webm
+*.flv
+*.jpg
+*.png
+*.jpeg
+*.gif
+
+# Temporary files
+temp/
+tmp/
+uploads/
+downloads/
 
 # IDE
 .vscode/
@@ -33,11 +60,14 @@ videos/
 *.swp
 *.swo
 *~
+.spyderproject
+.spyproject
 
 # OS
 .DS_Store
 Thumbs.db
 desktop.ini
+.Trash-*
 
 # Testing
 .pytest_cache/
@@ -46,16 +76,57 @@ htmlcov/
 *.log
 .tox/
 .nox/
+coverage.xml
+nosetests.xml
+test-results/
 
 # Jupyter
 *.ipynb_checkpoints
 .jupyter/
 
-# Environment
+# Environment files
 .env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
 .envrc
+
+# Package managers
+uv.lock
+*.lock
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
 
 # Documentation build
 docs/_build/
 docs/_static/
 docs/_templates/
+
+# Cloud and deployment
+.serverless/
+.aws-sam/
+*.pem
+*.key
+
+# ML model files and data
+*.pkl
+*.pt
+*.pth
+*.onnx
+*.h5
+*.pb
+data/
+models/
+checkpoints/
+
+# Monitoring and analytics
+.newrelic.yml
+*.pid
+
+# Backup files
+*.backup
+*.bak
+*~

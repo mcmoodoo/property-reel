@@ -1,228 +1,267 @@
-# Best-Shot Extraction Pipeline
+# Real Estate Video Processing Pipeline
 
-A CPU-optimized pipeline for extracting the best highlight clips from continuous video takes. Uses CLIP for aesthetic scoring, traditional computer vision for technical quality assessment, and temporal analysis to find the most compelling moments.
+An AI-powered system that automatically creates professional property showcase videos from raw footage. The pipeline uses a **backend-only API** for job orchestration while delegating all machine learning processing to **RunPod serverless GPUs**.
 
-## Features
+## 🏗️ Architecture Overview
 
-- **Multi-dimensional scoring**: Combines aesthetics (CLIP), sharpness, exposure, and subject saliency
-- **Temporal smoothing**: Finds sustained high-quality moments, not just single good frames
-- **Diversity filtering**: Ensures variety in selected clips using CLIP embeddings
-- **CPU-optimized**: Designed to run efficiently on CPU with minimal dependencies
-- **Configurable**: YAML-based configuration with presets for different video types
-- **Caching**: Reuses CLIP embeddings across runs for faster processing
-
-## Installation
-
-### Prerequisites
-
-- Python 3.10+
-- FFmpeg (for video processing)
-- UV package manager
-
-On Arch Linux:
-```bash
-sudo pacman -S ffmpeg
-pip install uv
+```
+Real Estate Agency → Web Frontend → Backend API → RunPod Serverless → Final Showcase
+        ↓               ↓             ↓              ↓                    ↓
+   Upload Videos    React App    FastAPI      All ML Models          S3 Storage
 ```
 
-### Setup
+### Key Design Principles
+- **Backend**: Pure API/orchestration layer (NO ML models)
+- **RunPod**: All AI inference on serverless GPUs (CLIP, YOLO, NIMA, etc.)
+- **Scalable**: Handle multiple concurrent processing jobs
+- **Cost-effective**: Pay-per-use serverless GPU processing
+
+## 🚀 Quick Start
+
+### Backend Setup
 
 ```bash
-# Clone the repository
-cd best-shot-extraction
+# Navigate to backend directory
+cd backend/
 
-# Create virtual environment and install dependencies
-uv venv
-uv pip install -e .
+# Copy environment configuration
+cp .env.example .env
+# Edit .env with your credentials
 
-# For development dependencies
-uv pip install -e ".[dev]"
+# Install dependencies (lightweight, no ML libraries)
+pip install -r requirements.txt
+
+# Start the API server
+./start.sh
 ```
 
-## Quick Start
+The API will be available at `http://localhost:8000` with documentation at `http://localhost:8000/docs`
 
-### Process a single video
+### Environment Configuration
+
+Edit `backend/.env` with your credentials:
 
 ```bash
-# Using default settings
-uv run best-shot process videos/aerial-shot.mp4
+# Database
+DATABASE_URL=postgresql://user:password@localhost:5432/real_estate_pipeline
 
-# With custom configuration
-uv run best-shot process videos/interior-shot.mp4 --config config/interior.yaml
+# AWS S3 (for video storage)
+AWS_ACCESS_KEY_ID=your_access_key
+AWS_SECRET_ACCESS_KEY=your_secret_key
+S3_BUCKET_VIDEOS=real-estate-videos
+S3_BUCKET_RESULTS=real-estate-results
 
-# Specify output directory and number of clips
-uv run best-shot process videos/aerial-shot.mp4 --output-dir results --top-k 7
+# RunPod (for ML processing)
+RUNPOD_API_KEY=your_runpod_api_key
+RUNPOD_ENDPOINT_ID=your_endpoint_id
+
+# API Configuration
+DEBUG=true
+CORS_ORIGINS=http://localhost:3000
 ```
 
-### Batch processing
+## 📋 API Usage
+
+### Upload Property Videos
 
 ```bash
-# Process all MP4 files in a directory
-uv run best-shot batch videos/
-
-# With custom pattern
-uv run best-shot batch videos/ --pattern "*.mov"
+curl -X POST "http://localhost:8000/api/v1/jobs/" \
+  -H "Content-Type: multipart/form-data" \
+  -F "files=@kitchen.mp4" \
+  -F "files=@living_room.mp4" \
+  -F "files=@exterior.mp4" \
+  -F 'property_data={"property_type": "residential", "bedrooms": 3, "bathrooms": 2, "square_feet": 1500}'
 ```
 
-### Analyze without extraction
+Response:
+```json
+{
+  "job_id": "123e4567-e89b-12d3-a456-426614174000",
+  "status": "processing",
+  "video_count": 3,
+  "estimated_completion": "2024-01-20T15:30:00"
+}
+```
+
+### Check Processing Status
 
 ```bash
-# Quick analysis to see scoring statistics
-uv run best-shot analyze videos/aerial-shot.mp4
+curl "http://localhost:8000/api/v1/jobs/123e4567-e89b-12d3-a456-426614174000"
 ```
 
-## Configuration
-
-The pipeline uses YAML configuration files. Default presets are provided:
-
-- `config/default.yaml` - General purpose settings
-- `config/aerial.yaml` - Optimized for drone/aerial footage
-- `config/interior.yaml` - Optimized for interior/architectural shots
-
-### Key Configuration Parameters
-
-```yaml
-frame_extraction:
-  fps: 3.0  # Frames per second to extract
-  height: 720  # Target height for processing
-
-scoring:
-  weights:
-    sharpness: 0.3
-    exposure: -0.2  # Negative = penalty
-    aesthetics: 0.4
-    saliency: 0.1
-
-temporal:
-  smooth_window_seconds: 2.0
-  min_peak_distance_seconds: 4.0
-
-clips:
-  pre_roll_seconds: 1.0
-  post_roll_seconds: 2.0
-  crf: 18  # Quality (lower = better)
-
-diversity:
-  enabled: true
-  similarity_threshold: 0.12
+Response:
+```json
+{
+  "job_id": "123e4567-e89b-12d3-a456-426614174000",
+  "status": "completed",
+  "progress": 100,
+  "result_url": "https://s3.amazonaws.com/real-estate-results/showcases/final_video.mp4",
+  "created_at": "2024-01-20T14:30:00",
+  "completed_at": "2024-01-20T15:25:00"
+}
 ```
 
-## Pipeline Steps
+## 🎯 Core Features
 
-1. **Frame Extraction**: Samples video at reduced FPS (e.g., 3 FPS)
-2. **Per-Frame Scoring**: Evaluates aesthetics, sharpness, exposure, and saliency
-3. **Temporal Smoothing**: Applies sliding window to find sustained quality
-4. **Peak Detection**: Identifies best moments with minimum separation
-5. **Clip Extraction**: Cuts video segments around peaks
-6. **Diversity Filtering**: Removes near-duplicates using CLIP embeddings
+### 🏠 Property-Specific Processing
+- **Room Classification**: Automatically identifies kitchens, bedrooms, bathrooms, exteriors
+- **Quality Assessment**: Uses CLIP, NIMA, and computer vision for aesthetic scoring
+- **Motion Analysis**: Detects smooth camera movements, penalizes shaky footage
+- **Content Understanding**: Focuses on key property features like appliances, fixtures
 
-## Output
+### 🎬 Video Production
+- **Best Shot Selection**: Identifies the most compelling moments from each room
+- **Professional Editing**: Creates smooth transitions and proper pacing
+- **Showcase Generation**: Combines clips into a cohesive property tour
+- **Multiple Formats**: Generates clips for different platforms (social media, listings)
 
-The pipeline generates:
+### ⚡ Performance & Scale
+- **Fast Processing**: ~2-5 minutes for typical property (5-8 videos)
+- **Serverless GPU**: Only pay for processing time, no idle costs  
+- **Concurrent Jobs**: Handle multiple properties simultaneously
+- **Auto-scaling**: RunPod scales based on demand
 
-- **Highlight clips**: Individual MP4 files for each selected moment
-- **Metadata JSON**: Detailed information about clips, scores, and parameters
-- **Score plot**: Visualization of scores over time with selected peaks
-- **Contact sheet**: Grid of thumbnails from selected moments
-
-## Performance
-
-On a typical CPU (laptop):
-- 1-minute video: ~90-120 seconds processing time
-- Memory usage: ~2-4 GB (including model loading)
-- Cache speeds up repeated runs significantly
-
-## Project Structure
+## 🏗️ Project Structure
 
 ```
-best-shot-extraction/
-├── src/best_shot_extraction/
-│   ├── frame_extractor.py     # FFmpeg frame sampling
-│   ├── scorers/               # Scoring modules
-│   │   ├── aesthetics.py      # CLIP-based aesthetic scoring
-│   │   ├── sharpness.py       # Laplacian variance
-│   │   ├── exposure.py        # Histogram analysis
-│   │   └── saliency.py        # Text-image similarity
-│   ├── models/                # ML model management
-│   │   └── clip_model.py      # CLIP singleton
-│   ├── temporal.py            # Smoothing & peak detection
-│   ├── clip_extractor.py      # Video clip extraction
-│   ├── diversity.py           # Duplicate filtering
-│   └── pipeline.py            # Main orchestrator
-├── config/                    # Configuration presets
-├── cache/                     # Embedding cache
-├── output/                    # Generated clips
-└── frames/                    # Temporary frames
+real-estate-video-pipeline/
+├── backend/                    # FastAPI backend (NO ML models)
+│   ├── main.py                # Application entry point
+│   ├── api/                   # REST API endpoints
+│   │   ├── health.py          # Health monitoring
+│   │   ├── jobs.py            # Job management
+│   │   └── webhook.py         # RunPod callbacks
+│   ├── database/              # Data persistence
+│   │   ├── models.py          # SQLAlchemy models
+│   │   └── connection.py      # Database setup
+│   ├── services/              # External integrations
+│   │   ├── s3_service.py      # AWS S3 operations
+│   │   └── runpod_service.py  # RunPod API client
+│   ├── utils/                 # Utilities
+│   │   ├── config.py          # Configuration management
+│   │   └── validation.py      # Input validation
+│   ├── requirements.txt       # Lightweight dependencies
+│   └── start.sh              # Startup script
+├── roadmap.md                 # Complete implementation plan
+└── README.md                  # This file
 ```
 
-## Advanced Usage
+## 🔄 Processing Pipeline
 
-### Custom scoring weights
+1. **Upload**: Real estate agent uploads property videos via web interface
+2. **Storage**: Backend stores videos in AWS S3 with metadata
+3. **Job Creation**: Backend creates processing job in database
+4. **RunPod Submission**: Backend submits job to RunPod serverless endpoint
+5. **ML Processing**: RunPod loads all AI models and processes videos:
+   - Room classification (CLIP)
+   - Quality scoring (NIMA, BRISQUE)
+   - Motion analysis (RAFT, I3D)
+   - Object detection (YOLOv8)
+   - Best shot selection
+   - Video editing and composition
+6. **Results Upload**: RunPod uploads final videos back to S3
+7. **Webhook**: RunPod notifies backend of completion
+8. **Download**: User receives links to download showcase videos
 
-Create your own configuration file:
+## 🤖 AI Models Used (RunPod Only)
 
-```yaml
-# config/custom.yaml
-scoring:
-  weights:
-    sharpness: 0.5  # Emphasize sharpness
-    exposure: -0.1
-    aesthetics: 0.3
-    saliency: 0.1
-```
+All machine learning models run exclusively on RunPod serverless GPUs:
 
-### Video-specific prompts
+### Core Models
+- **CLIP ViT-B/32** - Room classification and semantic understanding
+- **YOLOv8** - Object detection (appliances, furniture, fixtures)
+- **NIMA** - Neural Image Assessment for aesthetic quality
 
-For specialized content, customize saliency prompts:
+### Video Analysis
+- **RAFT** - Optical flow for smooth motion detection
+- **TransNetV2** - Shot boundary detection
+- **I3D** - Video understanding for camera movement analysis
 
-```yaml
-scoring:
-  saliency_prompts:
-    - "professional product photography"
-    - "clean product shot on white background"
-    - "detailed close-up of product"
-```
+### Quality Assessment
+- **BRISQUE** - No-reference image quality metrics
+- **LPIPS** - Perceptual similarity for duplicate detection
 
-## Troubleshooting
+## 📊 Monitoring & Health
 
-### FFmpeg not found
+### Health Endpoints
 ```bash
-# Install on Arch Linux
-sudo pacman -S ffmpeg
+# Basic health check
+curl http://localhost:8000/health/
 
-# Verify installation
-ffmpeg -version
+# Detailed system status
+curl http://localhost:8000/health/detailed
+
+# Kubernetes probes
+curl http://localhost:8000/health/readiness
+curl http://localhost:8000/health/liveness
 ```
 
-### Out of memory
-- Reduce batch size in code
-- Lower frame extraction resolution
-- Process shorter video segments
+### System Monitoring
+- Database connectivity and performance
+- S3 bucket accessibility
+- RunPod API status
+- Processing queue metrics
+- Error rates and patterns
 
-### Slow processing
-- Enable caching (default)
-- Reduce frame extraction FPS
-- Use lower resolution (480p)
+## 🚀 Production Deployment
 
-## Development
-
-### Running tests
-```bash
-uv run pytest tests/
+### Docker Support
+```dockerfile
+# Backend container (no GPU required)
+FROM python:3.11-slim
+COPY requirements.txt .
+RUN pip install -r requirements.txt
+COPY . .
+CMD ["./start.sh"]
 ```
 
-### Code formatting
-```bash
-uv run black src/
-uv run ruff check src/
-```
+### Kubernetes Deployment
+The backend includes proper health checks for Kubernetes:
+- Readiness probes check dependencies
+- Liveness probes monitor application health
+- Graceful shutdown handling
 
-## License
+### RunPod Serverless
+- Deploy ML pipeline to RunPod once
+- Backend automatically scales with demand
+- Pay only for GPU processing time
 
-MIT
+## 💰 Cost Structure
 
-## Acknowledgments
+### Processing Costs (Per Property)
+- **RunPod GPU**: ~$0.12-0.20 per job (2-5 minutes processing)
+- **S3 Storage**: ~$0.05 per job (video storage and transfer)
+- **Total**: ~$0.17-0.25 per property + profit margin
 
-- CLIP model by OpenAI
-- LAION for aesthetic predictor research
-- FFmpeg for video processing
+### Infrastructure Costs (Monthly)
+- **Backend Server**: $20-50/month (lightweight, no GPU)
+- **Database**: $25-100/month (PostgreSQL)
+- **S3 Storage**: Variable based on usage
+- **Monitoring**: $20-50/month (optional)
+
+## 🔗 Next Steps
+
+See `roadmap.md` for the complete 14-week implementation plan covering:
+- ✅ **Phase 1**: Backend foundation (completed)
+- **Phase 2**: API development and testing
+- **Phase 3**: RunPod ML pipeline implementation
+- **Phase 4**: Integration and performance testing
+- **Phase 5**: Frontend development
+- **Phase 6**: Production deployment
+- **Phase 7**: Monitoring and analytics
+
+## 🤝 Contributing
+
+This project follows the roadmap in `roadmap.md`. Key principles:
+- Backend remains ML-free (API/orchestration only)
+- All AI processing happens on RunPod
+- Scalable, cost-effective architecture
+- Production-ready monitoring and deployment
+
+## 📄 License
+
+MIT License - See LICENSE file for details
+
+---
+
+**Ready to revolutionize real estate video marketing with AI! 🏡✨**

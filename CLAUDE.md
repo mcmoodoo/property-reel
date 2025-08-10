@@ -4,112 +4,150 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-This is a CPU-optimized pipeline for extracting the best highlight clips from continuous video takes. The system uses CLIP for aesthetic scoring, traditional computer vision for technical quality assessment, and temporal analysis to find the most compelling moments from long-form video content.
+This is a Real Estate Video Processing Pipeline that automatically creates professional property showcase videos from raw footage. The system uses a **backend-only API architecture** where:
+
+- **Backend**: Pure FastAPI application for job orchestration (NO ML models)
+- **RunPod**: All AI/ML processing is delegated to serverless GPU infrastructure  
+- **Frontend**: React web app for real estate agencies to upload videos
+
+**Critical**: The backend contains NO machine learning models. All AI processing happens on RunPod.
 
 ## Development Commands
 
-### Environment Setup
+### Backend Development
 ```bash
-# Install UV package manager first (if not installed)
-pip install uv
+# Navigate to backend
+cd backend/
 
-# Create virtual environment and install dependencies
-uv venv
-uv pip install -e .
+# Copy environment configuration
+cp .env.example .env
+# Edit .env with your credentials
 
-# For development with linting/formatting tools
-uv pip install -e ".[dev]"
+# Install dependencies
+pip install -r requirements.txt
+
+# Start development server
+./start.sh
+
+# Or manually:
+python -m uvicorn main:app --host 0.0.0.0 --port 8000 --reload
 ```
 
-### Running the Pipeline
+### API Testing
 ```bash
-# Process a single video with default settings
-uv run best-shot process videos/aerial-shot.mp4
+# Check health
+curl http://localhost:8000/health/
 
-# With custom configuration
-uv run best-shot process videos/interior-shot.mp4 --config config/interior.yaml
+# Detailed health check
+curl http://localhost:8000/health/detailed
 
-# Specify output directory and number of clips
-uv run best-shot process videos/aerial-shot.mp4 --output-dir results --top-k 7
-
-# Batch process all videos in directory (auto-detects .mp4, .MP4, .mov, etc.)
-uv run best-shot batch videos/
-
-# Process only specific pattern
-uv run best-shot batch videos/ --pattern "*.MP4"
-
-# Stop on first error instead of continuing
-uv run best-shot batch videos/ --no-continue-on-error
-
-# Quick analysis without extraction
-uv run best-shot analyze videos/aerial-shot.mp4
-```
-
-### Testing and Code Quality
-```bash
-# Run tests
-uv run pytest tests/
-
-# Code formatting
-uv run black src/
-
-# Linting
-uv run ruff check src/
+# Upload property videos (example)
+curl -X POST "http://localhost:8000/api/v1/jobs/" \
+  -H "Content-Type: multipart/form-data" \
+  -F "files=@video1.mp4" \
+  -F "files=@video2.mp4" \
+  -F 'property_data={"property_type": "residential", "bedrooms": 3}'
 ```
 
 ## Architecture Overview
 
-The pipeline follows a 6-step modular architecture:
+### Backend-Only Design (No ML Models)
+```
+Frontend → Backend API → RunPod Serverless → ML Pipeline → Results
+   ↓           ↓              ↓                 ↓           ↓
+React      FastAPI       GPU Processing    All AI Models  S3 Storage
+```
 
-### Core Pipeline Components (`src/best_shot_extraction/`)
+### Backend Structure (`backend/`)
+- **`main.py`** - FastAPI application entry point
+- **`api/`** - REST API endpoints (health, jobs, webhooks)
+- **`database/`** - SQLAlchemy models and connection management
+- **`services/`** - External service integrations (S3, RunPod)
+- **`utils/`** - Configuration and validation utilities
 
-1. **`pipeline.py`** - Main orchestrator that coordinates all processing steps
-2. **`frame_extractor.py`** - Extracts frames from video using FFmpeg at reduced FPS (typically 3 FPS)
-3. **`scorers/`** - Modular scoring system with multiple quality assessments:
-   - `composite.py` - Combines multiple scorers with configurable weights
-   - `aesthetics.py` - CLIP-based aesthetic scoring using LAION aesthetic predictor
-   - `sharpness.py` - Laplacian variance for focus quality
-   - `exposure.py` - Histogram analysis to penalize blown highlights/crushed blacks
-   - `saliency.py` - CLIP text-image similarity for content relevance
-4. **`temporal.py`** - Temporal smoothing and peak detection to find sustained quality moments
-5. **`clip_extractor.py`** - Extracts video clips around detected peaks using FFmpeg
-6. **`diversity.py`** - Removes near-duplicate clips using CLIP embeddings and cosine similarity
+### Key Components
 
-### Supporting Modules
-- **`models/clip_model.py`** - Singleton CLIP model management with caching
-- **`utils/`** - Video utilities and visualization tools
-- **`cli.py`** - Command-line interface with Click
+1. **Job Management** - Track video processing jobs from upload to completion
+2. **S3 Integration** - Handle video uploads and results storage
+3. **RunPod Service** - Submit jobs to serverless GPU infrastructure
+4. **Webhook Handler** - Receive completion notifications from RunPod
+5. **Health Monitoring** - Comprehensive system health checks
 
-### Configuration System
-The pipeline uses YAML-based configuration with presets for different video types:
-- `config/default.yaml` - General purpose settings
-- `config/aerial.yaml` - Optimized for drone/aerial footage  
-- `config/interior.yaml` - Optimized for interior/architectural shots
+### Database Models
+- **ProcessingJob** - Main job tracking with property metadata
+- **JobMetrics** - Performance and analytics data
+- **SystemHealth** - System status monitoring
 
-## Key Design Patterns
+## Configuration
 
-### Scorer Architecture
-All scorers inherit from `BaseScorer` and implement a consistent interface. The `CompositeScorer` combines multiple scorers using weighted averaging, allowing for easy experimentation with different quality metrics.
+### Environment Variables (.env)
+```bash
+# Database
+DATABASE_URL=postgresql://user:password@localhost:5432/real_estate_pipeline
+REDIS_URL=redis://localhost:6379/0
 
-### Caching Strategy
-CLIP embeddings are cached to disk (in `cache/` directory) to speed up repeated runs on the same video. Cache files are named by frame content hash for consistency.
+# AWS S3
+AWS_ACCESS_KEY_ID=your_access_key
+AWS_SECRET_ACCESS_KEY=your_secret_key
+S3_BUCKET_VIDEOS=real-estate-videos
+S3_BUCKET_RESULTS=real-estate-results
 
-### Temporal Processing
-The pipeline applies sliding window smoothing (default 2-3 seconds) to eliminate noisy score variations, then uses peak detection with minimum separation constraints (4-6 seconds) to ensure diverse clip selection.
+# RunPod
+RUNPOD_API_KEY=your_runpod_api_key
+RUNPOD_ENDPOINT_ID=your_endpoint_id
 
-### Output Structure
-Each processed video generates:
-- Individual MP4 clips (`output/{video_name}_001.mp4`, etc.)
-- JSON metadata with scores and parameters (`pipeline_report.json`)
-- Score visualization plot (`score_plot.png`)
-- Contact sheet of thumbnails (`contact_sheet.jpg`)
+# API Configuration  
+DEBUG=true
+CORS_ORIGINS=http://localhost:3000
+```
 
-## Dependencies and Environment
+## API Endpoints
 
-- **Python 3.10+** required
-- **FFmpeg** required for video processing
-- **PyTorch with CPU-optimized setup** via UV's index configuration
-- **CLIP models** downloaded automatically on first use
-- Uses CPU-only inference for broader compatibility
+### Job Management
+- `POST /api/v1/jobs/` - Create processing job with video uploads
+- `GET /api/v1/jobs/{job_id}` - Get job status and results
+- `GET /api/v1/jobs/` - List jobs with filtering
+- `DELETE /api/v1/jobs/{job_id}` - Cancel processing job
 
-The project uses UV package manager with a CPU-optimized PyTorch index for efficient installation without CUDA dependencies.
+### Health Monitoring
+- `GET /health/` - Basic health check
+- `GET /health/detailed` - Detailed dependency status
+- `GET /health/readiness` - Kubernetes readiness probe
+- `GET /health/liveness` - Kubernetes liveness probe
+
+### Webhooks
+- `POST /webhook/runpod/{job_id}` - RunPod completion callback
+
+## Data Flow
+
+1. **Upload**: Frontend uploads videos to backend API
+2. **Storage**: Backend stores videos in S3
+3. **Processing**: Backend submits job to RunPod serverless
+4. **ML Pipeline**: RunPod runs all AI models (CLIP, YOLO, NIMA, etc.)
+5. **Results**: RunPod uploads processed videos back to S3
+6. **Notification**: RunPod sends webhook to backend with results
+7. **Completion**: Frontend retrieves download links from backend
+
+## Dependencies
+
+The backend uses **lightweight dependencies only** (no ML libraries):
+- **FastAPI** - REST API framework
+- **SQLAlchemy** - Database ORM
+- **boto3** - AWS S3 client
+- **requests** - HTTP client for RunPod API
+- **pydantic** - Data validation
+
+## Development Workflow
+
+1. **Backend Changes**: Edit backend code and test with `./start.sh`
+2. **Database Changes**: Update models in `database/models.py`
+3. **API Changes**: Modify endpoints in `api/` directory
+4. **Testing**: Use `curl` or Postman to test API endpoints
+5. **Deployment**: Deploy backend to cloud, RunPod handles ML processing
+
+## Important Notes
+
+- **NO ML MODELS**: The backend is pure API/orchestration only
+- **RunPod Integration**: All AI processing is delegated to RunPod serverless
+- **Stateless Design**: Backend doesn't store video data, only job metadata
+- **Scalable Architecture**: Backend can handle multiple concurrent jobs
