@@ -1,0 +1,33 @@
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Sid": "VideosList",
+      "Effect": "Allow",
+      "Action": ["s3:ListBucket", "s3:GetBucketLocation"],
+      "Resource": "arn:aws:s3:::unpin-real-estate-videos"
+    },
+    {
+      "Sid": "VideosGetObjects",
+      "Effect": "Allow",
+      "Action": ["s3:GetObject"],
+      "Resource": "arn:aws:s3:::unpin-real-estate-videos/*"
+    },
+    {
+      "Sid": "ResultsWriteObjects",
+      "Effect": "Allow",
+      "Action": [
+        "s3:PutObject",
+        "s3:AbortMultipartUpload"
+      ],
+      "Resource": "arn:aws:s3:::unpin-real-estate-results/*"
+    },
+    {
+      "Sid": "ResultsMultipartBucketLevel",
+      "Effect": "Allow",
+      "Action": ["s3:ListBucketMultipartUploads", "s3:GetBucketLocation"],
+      "Resource": "arn:aws:s3:::unpin-real-estate-results"
+    }
+  ]
+}
+
