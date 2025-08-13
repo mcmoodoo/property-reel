@@ -5,21 +5,21 @@
 default:
     @just --list
 
-# === Development ===
+# === Quick Start ===
 
-# Install dependencies
-install:
+# Complete setup for new developers
+setup:
     uv sync
+    cp .env.example .env
+    @echo "🚀 Setup complete! Edit .env and run 'just dev'"
 
-# Install with all optional dependencies (dev tools)
-install-dev:
-    uv sync --all-extras
+# === Development ===
 
 # Run the development server
 dev:
     uv run python run.py
 
-# Run with uvicorn directly
+# Run with uvicorn directly (alternative)
 serve:
     uv run uvicorn main:app --host 0.0.0.0 --port 8000 --reload
 
@@ -55,33 +55,31 @@ test:
 test-cov:
     uv run pytest --cov=. tests/
 
-# Test S3 connectivity and configuration
-test-s3:
-    uv run python test_s3.py
+# Test end-to-end API workflow
+test-e2e:
+    uv run python test_api_e2e.py
+
+# Test RunPod connection
+test-runpod:
+    uv run python test_runpod_connection.py
+
+# === S3 Management ===
 
 # Create S3 buckets if they don't exist
 s3-setup:
     uv run python -c "import asyncio; from services.s3_service import s3_service; asyncio.run(s3_service.setup_buckets())"
 
-# Test S3 upload functionality
-test-upload:
+# Test S3 connectivity and all operations
+test-s3:
+    uv run python test_s3.py
     uv run python test_upload.py
-
-# Test S3 download functionality
-test-download:
     uv run python test_download.py
-
-# Test S3 validation and error handling
-test-s3-validation:
     uv run python test_s3_validation.py
-
-# Run all S3 tests
-test-s3-all: test-s3 test-upload test-download test-s3-validation
     @echo "🎉 All S3 tests completed!"
 
 # === Database Management ===
 
-# Start PostgreSQL in Podman (for local development)
+# Start PostgreSQL in Podman
 db-start:
     podman run --name real-estate-postgres \
         -e POSTGRES_DB=real_estate_pipeline \
@@ -98,24 +96,15 @@ db-stop:
 db-remove:
     podman rm real-estate-postgres
 
-# Connect to PostgreSQL database
-db-connect:
-    podman exec -it real-estate-postgres psql -U postgres -d real_estate_pipeline
-
-# View database logs
-db-logs:
-    podman logs real-estate-postgres
-
 # Reset database (stop, remove, start fresh)
 db-reset: db-stop db-remove db-start
     @echo "🔄 Database reset complete"
 
-# === Database Migrations ===
+# Connect to PostgreSQL database
+db-connect:
+    podman exec -it real-estate-postgres psql -U postgres -d real_estate_pipeline
 
-# Initialize Alembic migrations
-migrate-init:
-    uv run alembic init alembic
-    @echo "📝 Edit alembic.ini and alembic/env.py to configure your database"
+# === Database Migrations ===
 
 # Create a new migration
 migrate-create MESSAGE:
@@ -129,20 +118,11 @@ migrate-up:
 migrate-down:
     uv run alembic downgrade -1
 
-# Show migration history
-migrate-history:
-    uv run alembic history
-
 # Show current migration
 migrate-current:
     uv run alembic current
 
-# === Environment ===
-
-# Copy environment template
-env:
-    cp .env.example .env
-    @echo "📝 Edit .env with your configuration"
+# === Environment & Configuration ===
 
 # Check environment configuration
 env-check:
@@ -162,43 +142,31 @@ health:
 health-detailed:
     curl -s http://localhost:8000/health/detailed | python -m json.tool
 
-# === RunPod Container Management with Podman ===
+# === RunPod Container Management ===
 
-# Build RunPod container with Podman
+# Build RunPod container
 runpod-build:
     #!/bin/bash
-    echo "🐳 Building RunPod container with Podman..."
+    echo "🐳 Building RunPod container..."
     cd runpod && podman build -t real-estate-processor:latest .
     echo "✅ Container built successfully"
 
-# Tag container for Docker Hub (or your registry)
-runpod-tag REGISTRY_USER:
+# Deploy to GitHub Container Registry
+ghcr-deploy GITHUB_USERNAME: runpod-build
     #!/bin/bash
-    echo "🏷️  Tagging container for registry..."
-    podman tag real-estate-processor:latest {{REGISTRY_USER}}/real-estate-processor:latest
-    podman tag real-estate-processor:latest {{REGISTRY_USER}}/real-estate-processor:$(date +%Y%m%d-%H%M%S)
-    echo "✅ Tagged as {{REGISTRY_USER}}/real-estate-processor:latest"
+    echo "🚀 Deploying to GitHub Container Registry..."
+    
+    # Tag for GHCR
+    podman tag real-estate-processor:latest ghcr.io/{{GITHUB_USERNAME}}/real-estate-processor:latest
+    
+    # Push to GHCR
+    echo "📤 Pushing to ghcr.io/{{GITHUB_USERNAME}}/real-estate-processor..."
+    podman push ghcr.io/{{GITHUB_USERNAME}}/real-estate-processor:latest
+    
+    echo "✅ Deployment complete!"
+    echo "📝 Image: ghcr.io/{{GITHUB_USERNAME}}/real-estate-processor:latest"
 
-# Push container to registry with Podman
-runpod-push REGISTRY_USER:
-    #!/bin/bash
-    echo "📤 Pushing container to registry..."
-    podman push {{REGISTRY_USER}}/real-estate-processor:latest
-    echo "✅ Pushed to {{REGISTRY_USER}}/real-estate-processor:latest"
-
-# Build and push in one command
-runpod-deploy REGISTRY_USER: runpod-build
-    #!/bin/bash
-    echo "🚀 Deploying RunPod container..."
-    podman tag real-estate-processor:latest {{REGISTRY_USER}}/real-estate-processor:latest
-    podman push {{REGISTRY_USER}}/real-estate-processor:latest
-    echo "✅ Container deployed to {{REGISTRY_USER}}/real-estate-processor:latest"
-    echo ""
-    echo "📝 Next steps:"
-    echo "1. Update RunPod template with image: {{REGISTRY_USER}}/real-estate-processor:latest"
-    echo "2. Restart RunPod endpoint to use new image"
-
-# Test container locally with Podman
+# Test container locally
 runpod-test-local:
     #!/bin/bash
     echo "🧪 Testing RunPod container locally..."
@@ -211,72 +179,37 @@ runpod-test-local:
         real-estate-processor:latest \
         python -c "import handler; print('✅ Handler imports successfully')"
 
-# Update RunPod template with new image
-runpod-update-image TEMPLATE_ID IMAGE:
-    uv run python update_runpod_image.py {{TEMPLATE_ID}} {{IMAGE}}
+# === RunPod Endpoint Management ===
 
-# Complete deployment workflow
-runpod-full-deploy REGISTRY_USER: runpod-build
+# Interactive RunPod setup
+runpod-setup:
+    uv run python setup_runpod.py setup
+
+# List RunPod endpoints
+runpod-endpoints:
     #!/bin/bash
-    echo "🚀 Full RunPod deployment with Podman..."
+    if [ -z "$RUNPOD_API_KEY" ]; then
+        echo "❌ RUNPOD_API_KEY environment variable not set"
+        exit 1
+    fi
     
-    # Build and push
-    podman tag real-estate-processor:latest {{REGISTRY_USER}}/real-estate-processor:latest
-    podman push {{REGISTRY_USER}}/real-estate-processor:latest
-    
-    # Update template (using the template ID from earlier)
-    TEMPLATE_ID="fmhv2snzok"
-    uv run python update_runpod_image.py $TEMPLATE_ID {{REGISTRY_USER}}/real-estate-processor:latest
-    
-    echo "✅ Deployment complete!"
-    echo "📝 Your RunPod endpoint will use the new image on next cold start"
+    echo "🚀 Listing RunPod endpoints..."
+    curl -s -X GET "https://rest.runpod.io/v1/endpoints" \
+        -H "Authorization: Bearer $RUNPOD_API_KEY" \
+        -H "Content-Type: application/json" | python -m json.tool
 
-# GitHub Container Registry specific commands
-ghcr-login GITHUB_USERNAME:
+# Get RunPod endpoint status
+runpod-status ENDPOINT_ID:
     #!/bin/bash
-    echo "🔐 Logging into GitHub Container Registry..."
-    echo "Enter your GitHub Personal Access Token (with packages:write scope):"
-    podman login ghcr.io -u {{GITHUB_USERNAME}}
-
-# Build and push to GHCR
-ghcr-deploy GITHUB_USERNAME: runpod-build
-    #!/bin/bash
-    echo "🚀 Deploying to GitHub Container Registry..."
+    if [ -z "$RUNPOD_API_KEY" ]; then
+        echo "❌ RUNPOD_API_KEY environment variable not set"
+        exit 1
+    fi
     
-    # Tag for GHCR
-    podman tag real-estate-processor:latest ghcr.io/{{GITHUB_USERNAME}}/real-estate-processor:latest
-    podman tag real-estate-processor:latest ghcr.io/{{GITHUB_USERNAME}}/real-estate-processor:$(date +%Y%m%d-%H%M%S)
-    
-    # Push to GHCR
-    echo "📤 Pushing to ghcr.io/{{GITHUB_USERNAME}}/real-estate-processor..."
-    podman push ghcr.io/{{GITHUB_USERNAME}}/real-estate-processor:latest
-    
-    # Update RunPod template
-    TEMPLATE_ID="fmhv2snzok"
-    echo "🔄 Updating RunPod template..."
-    uv run python update_runpod_image.py $TEMPLATE_ID ghcr.io/{{GITHUB_USERNAME}}/real-estate-processor:latest
-    
-    echo "✅ Deployment complete!"
-    echo "📝 Image: ghcr.io/{{GITHUB_USERNAME}}/real-estate-processor:latest"
-    echo "📝 Your RunPod endpoint will use the new image on next cold start"
-
-# Make GHCR image public (optional)
-ghcr-make-public GITHUB_USERNAME REPO_NAME:
-    #!/bin/bash
-    echo "📢 Making GHCR image public..."
-    echo "Go to: https://github.com/{{GITHUB_USERNAME}}?tab=packages"
-    echo "Find 'real-estate-processor' and change visibility to Public"
-    echo "Or set in package settings: https://github.com/users/{{GITHUB_USERNAME}}/packages/container/{{REPO_NAME}}/settings"
-
-# === Podman ===
-
-# Build Podman image
-podman-build:
-    podman build -t real-estate-backend .
-
-# Run in Podman container
-podman-run:
-    podman run --rm -p 8000:8000 --env-file .env real-estate-backend
+    echo "🔍 Getting endpoint details for {{ENDPOINT_ID}}..."
+    curl -X GET "https://rest.runpod.io/v1/endpoints/{{ENDPOINT_ID}}" \
+        -H "Authorization: Bearer $RUNPOD_API_KEY" \
+        -H "Content-Type: application/json" | python -m json.tool
 
 # === Cleanup ===
 
@@ -290,169 +223,3 @@ clean:
 clean-all: clean
     rm -rf .venv/
     rm -f uv.lock
-
-# === Quick Start ===
-
-# Complete setup for new developers
-setup: install-dev env
-    @echo "🚀 Setup complete! Edit .env and run 'just dev'"
-
-# Full development environment with database
-dev-full: setup db-start
-    @echo "💾 Database started at localhost:5432"
-    @echo "🚀 Run 'just dev' to start the API server"
-
-# === RunPod Management ===
-
-# Create RunPod serverless endpoint
-runpod-create-endpoint:
-    #!/bin/bash
-    if [ -z "$RUNPOD_API_KEY" ]; then
-        echo "❌ RUNPOD_API_KEY environment variable not set"
-        echo "Please set it in .env or export RUNPOD_API_KEY=your_key"
-        exit 1
-    fi
-    
-    echo "🚀 Creating RunPod endpoint..."
-    curl -X POST "https://rest.runpod.io/v1/endpoints" \
-        -H "Authorization: Bearer $RUNPOD_API_KEY" \
-        -H "Content-Type: application/json" \
-        -d '{
-            "name": "real-estate-video-processor",
-            "imageName": "pytorch/pytorch:2.1.0-cuda12.1-cudnn8-devel",
-            "dockerArgs": "",
-            "containerDiskInGb": 25,
-            "volumeInGb": 0,
-            "volumeMountPath": "/runpod-volume",
-            "ports": "8000/http",
-            "env": {
-                "PYTHON_VERSION": "3.11",
-                "AWS_REGION": "us-east-1"
-            },
-            "gpuTypeIds": ["NVIDIA GeForce RTX 4090"],
-            "gpuCount": 1,
-            "workersMin": 0,
-            "workersMax": 1,
-            "scalerType": "QUEUE_DELAY",
-            "scalerValue": 4,
-            "idleTimeout": 5,
-            "executionTimeoutMs": 900000
-        }'
-
-# List RunPod endpoints
-runpod-list-endpoints:
-    #!/bin/bash
-    if [ -z "$RUNPOD_API_KEY" ]; then
-        echo "❌ RUNPOD_API_KEY environment variable not set"
-        exit 1
-    fi
-    
-    echo "📋 Listing RunPod endpoints..."
-    curl -X GET "https://rest.runpod.io/v1/endpoints" \
-        -H "Authorization: Bearer $RUNPOD_API_KEY" \
-        -H "Content-Type: application/json"
-
-# Get RunPod endpoint details
-runpod-status ENDPOINT_ID:
-    #!/bin/bash
-    if [ -z "$RUNPOD_API_KEY" ]; then
-        echo "❌ RUNPOD_API_KEY environment variable not set"
-        exit 1
-    fi
-    
-    echo "🔍 Getting endpoint details for {{ENDPOINT_ID}}..."
-    curl -X GET "https://rest.runpod.io/v1/endpoints/{{ENDPOINT_ID}}" \
-        -H "Authorization: Bearer $RUNPOD_API_KEY" \
-        -H "Content-Type: application/json"
-
-# List RunPod templates (to find templateId for endpoint creation)
-runpod-list-templates:
-    #!/bin/bash
-    if [ -z "$RUNPOD_API_KEY" ]; then
-        echo "❌ RUNPOD_API_KEY environment variable not set"
-        exit 1
-    fi
-    
-    echo "📋 Listing RunPod templates..."
-    curl -X GET "https://rest.runpod.io/v1/templates" \
-        -H "Authorization: Bearer $RUNPOD_API_KEY" \
-        -H "Content-Type: application/json"
-
-# Update RunPod endpoint
-runpod-update-endpoint ENDPOINT_ID:
-    #!/bin/bash
-    if [ -z "$RUNPOD_API_KEY" ]; then
-        echo "❌ RUNPOD_API_KEY environment variable not set"
-        exit 1
-    fi
-    
-    echo "🔄 Updating endpoint {{ENDPOINT_ID}}..."
-    curl -X PUT "https://rest.runpod.io/v1/endpoints/{{ENDPOINT_ID}}" \
-        -H "Authorization: Bearer $RUNPOD_API_KEY" \
-        -H "Content-Type: application/json" \
-        -d '{
-            "workersMin": 0,
-            "workersMax": 5,
-            "scalerType": "QUEUE_DELAY",
-            "scalerValue": 4,
-            "idleTimeout": 5
-        }'
-
-# Delete RunPod endpoint
-runpod-delete-endpoint ENDPOINT_ID:
-    #!/bin/bash
-    if [ -z "$RUNPOD_API_KEY" ]; then
-        echo "❌ RUNPOD_API_KEY environment variable not set"
-        exit 1
-    fi
-    
-    echo "🗑️  Deleting endpoint {{ENDPOINT_ID}}..."
-    read -p "Are you sure you want to delete this endpoint? (y/N): " confirm
-    if [[ $confirm =~ ^[Yy]$ ]]; then
-        curl -X DELETE "https://rest.runpod.io/v1/endpoints/{{ENDPOINT_ID}}" \
-            -H "Authorization: Bearer $RUNPOD_API_KEY" \
-            -H "Content-Type: application/json"
-    else
-        echo "Cancelled."
-    fi
-
-# Test RunPod connection
-test-runpod:
-    uv run python -c "import asyncio; from services.runpod_service import runpod_service; print('RunPod config:', runpod_service.validate_configuration())"
-
-# Interactive RunPod setup
-runpod-setup:
-    uv run python setup_runpod.py setup
-
-# Create template and endpoint (recommended)
-runpod-create-template-and-endpoint:
-    uv run python create_runpod_template.py
-
-# Quick RunPod commands using helper script
-runpod-templates:
-    #!/bin/bash
-    if [ -z "$RUNPOD_API_KEY" ]; then
-        echo "❌ RUNPOD_API_KEY environment variable not set"
-        echo "Please set it in .env or export RUNPOD_API_KEY=your_key"
-        exit 1
-    fi
-    
-    echo "📋 Listing RunPod templates..."
-    curl -s -X GET "https://rest.runpod.io/v1/templates" \
-        -H "Authorization: Bearer $RUNPOD_API_KEY" \
-        -H "Content-Type: application/json" | \
-    uv run python parse_runpod_response.py templates
-
-runpod-endpoints:
-    #!/bin/bash
-    if [ -z "$RUNPOD_API_KEY" ]; then
-        echo "❌ RUNPOD_API_KEY environment variable not set"
-        echo "Please set it in .env or export RUNPOD_API_KEY=your_key"
-        exit 1
-    fi
-    
-    echo "🚀 Listing RunPod endpoints..."
-    curl -s -X GET "https://rest.runpod.io/v1/endpoints" \
-        -H "Authorization: Bearer $RUNPOD_API_KEY" \
-        -H "Content-Type: application/json" | \
-    uv run python parse_runpod_response.py endpoints

@@ -29,6 +29,7 @@ class RunPodService:
         """Submit processing job to RunPod serverless function."""
 
         if not self.api_key or not self.endpoint_id:
+            logger.error(f"Missing config - API key: {bool(self.api_key)}, Endpoint: {self.endpoint_id}")
             raise ValueError("RunPod API key and endpoint ID must be configured")
 
         # Prepare payload for RunPod ML processing
@@ -48,22 +49,31 @@ class RunPodService:
 
         try:
             logger.info(
-                f"Submitting job {job_id} to RunPod with {len(video_s3_urls)} videos"
+                f"Submitting job {job_id} to RunPod endpoint {self.endpoint_id} with {len(video_s3_urls)} videos"
             )
+            logger.debug(f"Payload: {payload}")
 
+            url = f"{self.base_url}/endpoints/{self.endpoint_id}/run"
+            logger.info(f"POST to: {url}")
+            
             response = requests.post(
-                f"{self.base_url}/endpoints/{self.endpoint_id}/run",
+                url,
                 json=payload,
                 headers=headers,
                 timeout=30,
             )
 
+            logger.info(f"Response status: {response.status_code}")
+            if response.status_code != 200:
+                logger.error(f"Response body: {response.text}")
+            
             response.raise_for_status()
 
             result = response.json()
             runpod_job_id = result.get("id")
 
             if not runpod_job_id:
+                logger.error(f"Response missing job ID: {result}")
                 raise ValueError("RunPod did not return a job ID")
 
             logger.info(f"RunPod job submitted successfully: {runpod_job_id}")
@@ -71,6 +81,9 @@ class RunPodService:
 
         except requests.RequestException as e:
             logger.error(f"RunPod API request failed: {str(e)}")
+            if hasattr(e, 'response') and e.response is not None:
+                logger.error(f"Response status: {e.response.status_code}")
+                logger.error(f"Response body: {e.response.text}")
             raise Exception(f"Failed to submit RunPod job: {str(e)}")
         except Exception as e:
             logger.error(f"RunPod job submission error: {str(e)}")

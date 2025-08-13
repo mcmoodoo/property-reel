@@ -76,9 +76,9 @@ def validate_video_files(files: list[UploadFile]) -> list[str]:
 
     # Validate each file
     for i, file in enumerate(files):
-        # Check file size (100MB limit per file)
-        if hasattr(file, "size") and file.size > 100 * 1024 * 1024:
-            errors.append(f"File {i + 1} ({file.filename}) exceeds 100MB limit")
+        # Check file size (500MB limit per file)
+        if hasattr(file, "size") and file.size > 500 * 1024 * 1024:
+            errors.append(f"File {i + 1} ({file.filename}) exceeds 500MB limit")
 
         # Check file type
         mime_type, _ = mimetypes.guess_type(file.filename)

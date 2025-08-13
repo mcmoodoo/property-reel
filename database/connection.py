@@ -4,7 +4,7 @@ import logging
 from collections.abc import Generator
 from contextlib import contextmanager
 
-from sqlalchemy import create_engine
+from sqlalchemy import create_engine, text
 from sqlalchemy.orm import Session, sessionmaker
 from sqlalchemy.pool import StaticPool
 
@@ -90,7 +90,7 @@ class DatabaseManager:
         """Test database connection."""
         try:
             with self.session_scope() as session:
-                session.execute("SELECT 1")
+                session.execute(text("SELECT 1"))
             return True
         except Exception as e:
             logger.error(f"Database connection test failed: {str(e)}")
@@ -101,17 +101,21 @@ class DatabaseManager:
         try:
             with self.session_scope() as session:
                 # Test basic connectivity
-                session.execute("SELECT 1")
+                session.execute(text("SELECT 1"))
 
-                # Get connection pool info
+                # Get connection pool info (if available)
                 pool_info = {}
-                if hasattr(self.engine.pool, "size"):
-                    pool_info = {
-                        "pool_size": self.engine.pool.size(),
-                        "checked_in": self.engine.pool.checkedin(),
-                        "checked_out": self.engine.pool.checkedout(),
-                        "invalidated": self.engine.pool.invalid(),
-                    }
+                try:
+                    pool = self.engine.pool
+                    if hasattr(pool, "size"):
+                        pool_info["pool_size"] = pool.size() if callable(pool.size) else pool.size
+                    if hasattr(pool, "checked_in_connections"):
+                        pool_info["checked_in"] = len(pool.checked_in_connections)
+                    if hasattr(pool, "checked_out_connections"):
+                        pool_info["checked_out"] = pool.checked_out_connections
+                except Exception:
+                    # Pool info is optional, don't fail health check
+                    pass
 
                 return {
                     "status": "healthy",

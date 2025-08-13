@@ -20,11 +20,11 @@ class S3Service:
         """Initialize S3 client."""
         try:
             # Try explicit credentials first, then fall back to AWS credential chain
-            if settings.aws_access_key_id and settings.aws_secret_access_key:
+            if settings.aws_video_api_access_key_id and settings.aws_video_api_secret_access_key:
                 self.s3_client = boto3.client(
                     "s3",
-                    aws_access_key_id=settings.aws_access_key_id,
-                    aws_secret_access_key=settings.aws_secret_access_key,
+                    aws_access_key_id=settings.aws_video_api_access_key_id,
+                    aws_secret_access_key=settings.aws_video_api_secret_access_key,
                     region_name=settings.aws_region,
                 )
                 logger.info("Using S3 credentials from environment variables")
@@ -276,7 +276,7 @@ class S3Service:
 
         # Check if credentials are available (either env vars or AWS credential chain)
         credentials_available = bool(
-            settings.aws_access_key_id and settings.aws_secret_access_key
+            settings.aws_video_api_access_key_id and settings.aws_video_api_secret_access_key
         )
         if not credentials_available:
             # Test if AWS credential chain works

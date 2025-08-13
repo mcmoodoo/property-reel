@@ -27,6 +27,12 @@
       "Effect": "Allow",
       "Action": ["s3:ListBucketMultipartUploads", "s3:GetBucketLocation"],
       "Resource": "arn:aws:s3:::unpin-real-estate-results"
+    },
+    {
+      "Sid": "ResultsList",
+      "Effect": "Allow",
+      "Action": ["s3:ListBucket"],
+      "Resource": "arn:aws:s3:::unpin-real-estate-results"
     }
   ]
 }

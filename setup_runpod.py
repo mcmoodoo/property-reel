@@ -1,10 +1,11 @@
 #!/usr/bin/env python3
 """Helper script for RunPod endpoint setup and management."""
 
-import json
 import os
 import sys
+
 import requests
+
 from utils.config import settings
 
 
@@ -22,10 +23,12 @@ def list_templates():
     """List available RunPod templates."""
     api_key = get_runpod_api_key()
 
-    headers = {"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"}
+    headers = {"Authorization": f"Bearer {api_key}",
+               "Content-Type": "application/json"}
 
     try:
-        response = requests.get("https://rest.runpod.io/v1/templates", headers=headers)
+        response = requests.get(
+            "https://rest.runpod.io/v1/templates", headers=headers)
         response.raise_for_status()
 
         templates = response.json()
@@ -51,10 +54,12 @@ def list_endpoints():
     """List existing RunPod endpoints."""
     api_key = get_runpod_api_key()
 
-    headers = {"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"}
+    headers = {"Authorization": f"Bearer {api_key}",
+               "Content-Type": "application/json"}
 
     try:
-        response = requests.get("https://rest.runpod.io/v1/endpoints", headers=headers)
+        response = requests.get(
+            "https://rest.runpod.io/v1/endpoints", headers=headers)
         response.raise_for_status()
 
         endpoints = response.json()
@@ -67,7 +72,8 @@ def list_endpoints():
             print(f"ID: {endpoint.get('id', 'N/A')}")
             print(f"Status: {endpoint.get('status', 'N/A')}")
             print(
-                f"Workers: {endpoint.get('workersMin', 0)}-{endpoint.get('workersMax', 0)}"
+                f"Workers: {endpoint.get(
+                    'workersMin', 0)}-{endpoint.get('workersMax', 0)}"
             )
             print(f"GPU Type: {endpoint.get('gpuTypeIds', 'N/A')}")
             print("-" * 30)
@@ -83,7 +89,8 @@ def create_ml_template():
     """Create a template for the ML processing pipeline."""
     api_key = get_runpod_api_key()
 
-    headers = {"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"}
+    headers = {"Authorization": f"Bearer {api_key}",
+               "Content-Type": "application/json"}
 
     template_config = {
         "name": "Real Estate Video Processor",
@@ -126,13 +133,15 @@ def create_endpoint_with_template(template_id):
     """Create an endpoint using a template."""
     api_key = get_runpod_api_key()
 
-    headers = {"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"}
+    headers = {"Authorization": f"Bearer {api_key}",
+               "Content-Type": "application/json"}
 
     endpoint_config = {
         "name": "real-estate-video-processor",
         "templateId": template_id,
         "computeType": "GPU",
-        "gpuTypeIds": ["NVIDIA GeForce RTX 4090"],  # Optimal for AI/ML workloads
+        # Optimal for AI/ML workloads
+        "gpuTypeIds": ["NVIDIA GeForce RTX 4090"],
         "gpuCount": 1,
         "allowedCudaVersions": ["12.1", "12.8"],  # Compatible CUDA versions
         "workersMin": 0,
@@ -154,8 +163,7 @@ def create_endpoint_with_template(template_id):
 
         print(f"✅ Created endpoint: {endpoint_id}")
         print(f"Endpoint name: {endpoint.get('name')}")
-        print(f"\n📝 Add this to your .env file:")
-        print(f"RUNPOD_ENDPOINT_ID={endpoint_id}")
+        print("\n📝 Add this to your .env file:") print(f"RUNPOD_ENDPOINT_ID={endpoint_id}")
 
         return endpoint_id
 
@@ -215,4 +223,5 @@ def main():
 
 
 if __name__ == "__main__":
+    main()
     main()

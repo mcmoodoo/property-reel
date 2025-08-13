@@ -12,8 +12,10 @@ class Settings(BaseSettings):
     redis_url: str = Field(default="redis://localhost:6379/0")
 
     # AWS S3
-    aws_access_key_id: str = Field(default="")
-    aws_secret_access_key: str = Field(default="")
+    aws_video_api_access_key_id: str = Field(default="", alias="AWS_VIDEO_API_ACCESS_KEY_ID")
+    aws_video_api_secret_access_key: str = Field(default="", alias="AWS_VIDEO_API_SECRET_ACCESS_KEY")
+    aws_runpod_access_key_id: str = Field(default="", alias="AWS_RUNPOD_ACCESS_KEY_ID")
+    aws_runpod_secret_access_key: str = Field(default="", alias="AWS_RUNPOD_SECRET_ACCESS_KEY")
     aws_region: str = Field(default="us-east-1")
     s3_bucket_videos: str = Field(default="unpin-real-estate-videos")
     s3_bucket_results: str = Field(default="unpin-real-estate-results")
