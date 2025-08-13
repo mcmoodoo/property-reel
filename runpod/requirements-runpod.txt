@@ -4,7 +4,7 @@ runpod==1.7.6
 # AWS S3
 boto3==1.35.91
 
-# Video processing (lightweight)
+# Video processing 
 opencv-python-headless==4.10.0.84
 
 # HTTP requests for webhooks  
@@ -12,3 +12,11 @@ requests==2.32.3
 
 # Basic utilities
 numpy==1.26.4
+Pillow==10.0.0
+
+# BLIP-2 model dependencies
+transformers==4.36.0
+accelerate==0.25.0
+sentencepiece==0.1.99
+protobuf==4.25.1
+scipy==1.11.4

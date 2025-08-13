@@ -88,7 +88,16 @@ def check_status(job_id):
                     print("  ✅ Job completed!")
                     output = data.get("output", {})
                     if output:
-                        print(f"  Output: {json.dumps(output, indent=2)}")
+                        # Print summary of BLIP-2 analysis
+                        print(f"  Analysis URL: {output.get('analysis_url', 'N/A')}")
+                        print(f"  Total frames analyzed: {output.get('analysis_metadata', {}).get('total_frames', 0)}")
+                        
+                        # Show sample frame descriptions
+                        descriptions = output.get('frame_descriptions', [])[:3]
+                        if descriptions:
+                            print("  Sample descriptions:")
+                            for desc in descriptions:
+                                print(f"    {desc['timestamp']}s: {desc['description']}")
                     return True
                     
                 elif status == "FAILED":

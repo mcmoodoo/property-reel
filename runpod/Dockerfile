@@ -1,5 +1,5 @@
-# Lightweight POC container for video stitching
-FROM python:3.10-slim
+# RunPod container with BLIP-2 for frame analysis
+FROM pytorch/pytorch:2.1.0-cuda12.1-cudnn8-runtime
 
 # Set environment variables
 ENV DEBIAN_FRONTEND=noninteractive
@@ -8,12 +8,15 @@ ENV PIP_NO_CACHE_DIR=1
 
 # Install system dependencies
 RUN apt-get update && apt-get install -y --no-install-recommends \
+    python3-pip \
+    python3-opencv \
     ffmpeg \
     libsm6 \
     libxext6 \
     libxrender1 \
     libgomp1 \
     libglib2.0-0 \
+    wget \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
 
