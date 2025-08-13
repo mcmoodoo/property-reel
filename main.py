@@ -43,36 +43,46 @@ async def lifespan(app: FastAPI):
         # Test S3 connectivity and permissions
         logger.info("Testing S3 connectivity and permissions...")
         s3_status = s3_service.validate_configuration()
-        
+
         # Check credentials
-        if s3_status.get('credentials_configured'):
+        if s3_status.get("credentials_configured"):
             logger.info("✓ AWS credentials configured")
         else:
             logger.error("✗ AWS credentials not configured")
-            
+
         # Check buckets configuration
-        if s3_status.get('buckets_configured'):
-            logger.info(f"✓ S3 buckets configured: videos={settings.s3_bucket_videos}, results={settings.s3_bucket_results}")
+        if s3_status.get("buckets_configured"):
+            logger.info(
+                f"✓ S3 buckets configured: videos={settings.s3_bucket_videos}, results={settings.s3_bucket_results}"
+            )
         else:
             logger.error("✗ S3 buckets not configured")
-            
+
         # Check S3 client
-        if s3_status.get('s3_client_initialized'):
+        if s3_status.get("s3_client_initialized"):
             logger.info("✓ S3 client initialized")
         else:
             logger.error("✗ S3 client initialization failed")
-            
+
         # Check video bucket access
-        if s3_status.get('video_bucket_accessible'):
-            logger.info(f"✓ S3 video bucket '{settings.s3_bucket_videos}' is accessible")
+        if s3_status.get("video_bucket_accessible"):
+            logger.info(
+                f"✓ S3 video bucket '{settings.s3_bucket_videos}' is accessible"
+            )
         else:
-            logger.error(f"✗ S3 video bucket '{settings.s3_bucket_videos}' is not accessible")
-            
+            logger.error(
+                f"✗ S3 video bucket '{settings.s3_bucket_videos}' is not accessible"
+            )
+
         # Check results bucket access
-        if s3_status.get('results_bucket_accessible'):
-            logger.info(f"✓ S3 results bucket '{settings.s3_bucket_results}' is accessible")
+        if s3_status.get("results_bucket_accessible"):
+            logger.info(
+                f"✓ S3 results bucket '{settings.s3_bucket_results}' is accessible"
+            )
         else:
-            logger.error(f"✗ S3 results bucket '{settings.s3_bucket_results}' is not accessible")
+            logger.error(
+                f"✗ S3 results bucket '{settings.s3_bucket_results}' is not accessible"
+            )
 
         # Log configuration status
         logger.info(f"API starting on {settings.api_host}:{settings.api_port}")

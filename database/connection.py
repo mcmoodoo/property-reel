@@ -108,7 +108,9 @@ class DatabaseManager:
                 try:
                     pool = self.engine.pool
                     if hasattr(pool, "size"):
-                        pool_info["pool_size"] = pool.size() if callable(pool.size) else pool.size
+                        pool_info["pool_size"] = (
+                            pool.size() if callable(pool.size) else pool.size
+                        )
                     if hasattr(pool, "checked_in_connections"):
                         pool_info["checked_in"] = len(pool.checked_in_connections)
                     if hasattr(pool, "checked_out_connections"):

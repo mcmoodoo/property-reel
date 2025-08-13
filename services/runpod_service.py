@@ -15,7 +15,7 @@ class RunPodService:
     def __init__(self, api_key: str | None = None):
         """Initialize RunPod service."""
         self.api_key = api_key or settings.runpod_api_key
-        self.base_url = "https://rest.runpod.io/v1"
+        self.base_url = "https://api.runpod.ai/v2"
         self.endpoint_id = settings.runpod_endpoint_id
 
         if not self.api_key:
@@ -29,7 +29,9 @@ class RunPodService:
         """Submit processing job to RunPod serverless function."""
 
         if not self.api_key or not self.endpoint_id:
-            logger.error(f"Missing config - API key: {bool(self.api_key)}, Endpoint: {self.endpoint_id}")
+            logger.error(
+                f"Missing config - API key: {bool(self.api_key)}, Endpoint: {self.endpoint_id}"
+            )
             raise ValueError("RunPod API key and endpoint ID must be configured")
 
         # Prepare payload for RunPod ML processing
@@ -53,9 +55,9 @@ class RunPodService:
             )
             logger.debug(f"Payload: {payload}")
 
-            url = f"{self.base_url}/endpoints/{self.endpoint_id}/run"
+            url = f"{self.base_url}/{self.endpoint_id}/run"
             logger.info(f"POST to: {url}")
-            
+
             response = requests.post(
                 url,
                 json=payload,
@@ -66,7 +68,7 @@ class RunPodService:
             logger.info(f"Response status: {response.status_code}")
             if response.status_code != 200:
                 logger.error(f"Response body: {response.text}")
-            
+
             response.raise_for_status()
 
             result = response.json()
@@ -81,7 +83,7 @@ class RunPodService:
 
         except requests.RequestException as e:
             logger.error(f"RunPod API request failed: {str(e)}")
-            if hasattr(e, 'response') and e.response is not None:
+            if hasattr(e, "response") and e.response is not None:
                 logger.error(f"Response status: {e.response.status_code}")
                 logger.error(f"Response body: {e.response.text}")
             raise Exception(f"Failed to submit RunPod job: {str(e)}")
@@ -102,7 +104,7 @@ class RunPodService:
 
         try:
             response = requests.get(
-                f"{self.base_url}/endpoints/{self.endpoint_id}/requests/{runpod_job_id}",
+                f"{self.base_url}/{self.endpoint_id}/status/{runpod_job_id}",
                 headers=headers,
                 timeout=10,
             )
@@ -127,7 +129,7 @@ class RunPodService:
 
         try:
             response = requests.post(
-                f"{self.base_url}/endpoints/{self.endpoint_id}/requests/{runpod_job_id}/cancel",
+                f"{self.base_url}/{self.endpoint_id}/cancel/{runpod_job_id}",
                 headers=headers,
                 timeout=10,
             )
