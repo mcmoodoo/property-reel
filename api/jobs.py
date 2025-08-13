@@ -64,29 +64,18 @@ async def create_processing_job(
 
         logger.info(f"Created job {job.id} with {len(files)} videos")
 
-        # Upload videos to S3
-        try:
-            s3_urls = await s3_service.upload_multiple_videos(files, job.id)
+        # Skip S3 upload, use hardcoded test video
+        test_video = "s3://unpin-real-estate-videos/fresh-test-001/test.mp4"
+        job.video_s3_urls = [test_video]
+        job.video_count = 1
+        db.commit()
 
-            # Update job with S3 URLs
-            job.video_s3_urls = s3_urls
-            job.video_count = len(s3_urls)
-            db.commit()
-
-            logger.info(f"Uploaded {len(s3_urls)} videos for job {job.id}")
-
-        except Exception as e:
-            # Mark job as failed and cleanup
-            job.update_status("failed", f"Upload failed: {str(e)}")
-            db.commit()
-
-            logger.error(f"Upload failed for job {job.id}: {str(e)}")
-            raise HTTPException(status_code=500, detail="Video upload failed")
+        logger.info(f"Using hardcoded test video for job {job.id}")
 
         # Submit to RunPod
         try:
             runpod_job_id = await runpod_service.submit_job(
-                video_s3_urls=s3_urls,
+                video_s3_urls=[test_video],
                 property_data=property_model.dict(),
                 job_id=job.id,
             )

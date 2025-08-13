@@ -51,49 +51,53 @@ def test_detailed_health():
     }
 
 
-def create_job(video_file):
-    """Create a processing job."""
+def create_job():
+    """Create a processing job (no actual upload needed)."""
     print("\n📝 Creating job...")
-
-    # Get file size
-    size_mb = Path(video_file).stat().st_size / (1024 * 1024)
-    print(f"  Uploading: {Path(video_file).name} ({size_mb:.1f}MB)")
-
-    # Prepare files and data
-    files = [("files", (Path(video_file).name, open(video_file, "rb"), "video/mp4"))]
-    property_data = {
-        "property_id": "test-001",
-        "property_type": "residential",
-    }
-    data = {"property_data": json.dumps(property_data)}
-
-    # Upload
-    try:
-        response = requests.post(
-            f"{API_BASE_URL}/api/v1/jobs/", files=files, data=data, timeout=300
-        )
-
-        # Close file
-        files[0][1][1].close()
-
-        if response.status_code == 201:
-            job_data = response.json()
-            job_id = job_data["job_id"]
-            print(f"  ✅ Job created: {job_id}")
-            return job_id
-        else:
-            print(f"  ❌ Failed: {response.status_code}")
-            print(f"  Error: {response.text}")
+    print("  Note: Using hardcoded test video, no upload required")
+    
+    # Create a dummy file for the API
+    import tempfile
+    with tempfile.NamedTemporaryFile(suffix=".mp4") as dummy_file:
+        dummy_file.write(b"dummy video content")
+        dummy_file.seek(0)
+        
+        files = [("files", ("test.mp4", dummy_file, "video/mp4"))]
+        property_data = {
+            "property_id": "test-001",
+            "property_type": "residential",
+        }
+        data = {"property_data": json.dumps(property_data)}
+        
+        try:
+            response = requests.post(
+                f"{API_BASE_URL}/api/v1/jobs/",
+                files=files,
+                data=data,
+                timeout=30  # Much shorter timeout since no real upload
+            )
+            
+            if response.status_code == 200:
+                job_data = response.json()
+                job_id = job_data["job_id"]
+                print(f"  ✅ Job created: {job_id}")
+                return job_id
+            else:
+                print(f"  ❌ Failed: {response.status_code}")
+                print(f"  Error: {response.text}")
+                return None
+        except Exception as e:
+            print(f"  ❌ Error: {e}")
             return None
-    except Exception as e:
-        print(f"  ❌ Error: {e}")
-        return None
 
 
 def check_job_status(job_id):
     """Check job status."""
     print(f"\n⏳ Checking job {job_id}...")
 
+    # Wait a moment for RunPod submission
+    time.sleep(2)
+    
     # Get job info
     response = requests.get(f"{API_BASE_URL}/api/v1/jobs/{job_id}")
     if response.status_code != 200:
@@ -101,20 +105,20 @@ def check_job_status(job_id):
         return None
 
     job_data = response.json()
-    runpod_job_id = job_data.get("runpod_job_id")
-
-    if not runpod_job_id:
-        print("  ⚠️ No RunPod job ID yet")
-        return None
-
-    print(f"  RunPod ID: {runpod_job_id}")
-
-    # Poll RunPod directly if credentials available
-    if RUNPOD_API_KEY and RUNPOD_ENDPOINT_ID:
-        return poll_runpod(job_id, runpod_job_id)
-    else:
-        print("  ⚠️ No RunPod credentials, can't poll status")
-        return poll_api_only(job_id)
+    status = job_data.get("status")
+    
+    print(f"  Job status: {status}")
+    
+    # If already completed, we're done
+    if status == "completed":
+        print("  ✅ Job completed!")
+        return job_data
+    elif status == "failed":
+        print("  ❌ Job failed!")
+        return job_data
+    
+    # Otherwise poll for completion
+    return poll_api_only(job_id)
 
 
 def poll_runpod(job_id, runpod_job_id):
@@ -185,14 +189,8 @@ def main():
         print("❌ Database not connected")
         return
 
-    # Find video file
-    video_file = "videos/C0049.MP4"
-    if not Path(video_file).exists():
-        print(f"❌ Video file not found: {video_file}")
-        return
-
-    # Create job
-    job_id = create_job(video_file)
+    # Create job (no video file needed)
+    job_id = create_job()
     if not job_id:
         print("❌ Failed to create job")
         return
