@@ -2,10 +2,10 @@ name: Deploy to RunPod
 
 on:
   push:
-    branches: [dev]
-    # paths:
-    # - "runpod/**"
-    # - ".github/workflows/deploy-runpod.yml"
+    # branches: [dev]
+    paths:
+      - "runpod/**"
+      - ".github/workflows/deploy-runpod.yml"
   workflow_dispatch:
 
 env:
