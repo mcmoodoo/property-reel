@@ -13,7 +13,7 @@ import boto3
 import cv2
 import torch
 from PIL import Image
-from transformers import BlipProcessor, BlipForConditionalGeneration
+from transformers import Blip2Processor, Blip2ForConditionalGeneration
 
 # Initialize S3 client
 s3_client = boto3.client(
@@ -40,12 +40,12 @@ def load_blip2_model():
     # Use BLIP-2 for better descriptions
     model_name = "Salesforce/blip2-opt-2.7b"
     
-    blip_processor = BlipProcessor.from_pretrained(model_name)
-    blip_model = BlipForConditionalGeneration.from_pretrained(
+    blip_processor = Blip2Processor.from_pretrained(model_name)
+    blip_model = Blip2ForConditionalGeneration.from_pretrained(
         model_name,
-        torch_dtype=torch.float16 if torch.cuda.is_available() else torch.float32
+        torch_dtype=torch.float16 if torch.cuda.is_available() else torch.float32,
+        device_map="auto"
     )
-    blip_model.to(device)
     blip_model.eval()
     
     print("✅ BLIP-2 model loaded successfully")
@@ -115,7 +115,9 @@ def describe_frame(image: Image.Image, prompt: str = None) -> str:
     if prompt is None:
         prompt = "Question: What is shown in this real estate property image? Answer:"
     
-    inputs = blip_processor(image, text=prompt, return_tensors="pt").to(device)
+    inputs = blip_processor(image, text=prompt, return_tensors="pt")
+    if torch.cuda.is_available():
+        inputs = {k: v.to(device) if hasattr(v, 'to') else v for k, v in inputs.items()}
     
     with torch.no_grad():
         generated_ids = blip_model.generate(
