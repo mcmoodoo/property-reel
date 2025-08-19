@@ -36,7 +36,7 @@ test-e2e:
     uv run python test_api_e2e.py
 
 # Test RunPod directly with a sample video
-test-runpod-direct:
+runpod-direct-run:
     #!/bin/bash
     # Load environment variables from .env file
     if [ -f .env ]; then
