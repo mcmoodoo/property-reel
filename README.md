@@ -1,351 +1,123 @@
-# Real Estate Video Processing Backend
+# Real Estate Video Analysis API
 
-Backend API for processing real estate videos with AI-powered highlight extraction using RunPod serverless infrastructure.
+Backend API for analyzing real estate videos using BLIP-2 AI model via RunPod serverless infrastructure.
 
-## Architecture Overview
+## Overview
 
-This backend serves as the orchestration layer for a real estate video processing pipeline:
+This backend orchestrates AI-powered video analysis for real estate properties:
+- **FastAPI** backend for job management and API endpoints
+- **RunPod** serverless GPUs for BLIP-2 frame analysis
+- **AWS S3** for video storage and results
+- **PostgreSQL/SQLite** for job tracking
 
-- **FastAPI** - REST API for job management
-- **PostgreSQL/SQLite** - Job tracking and metrics storage  
-- **AWS S3** - Video upload and results storage
-- **RunPod** - Serverless GPU processing (all ML inference happens here)
-- **Redis** - Caching and session management
-
-**Important**: This backend contains NO machine learning models. All AI processing is delegated to RunPod serverless functions.
+The backend contains **no ML models** - all AI processing happens on RunPod.
 
 ## Quick Start
 
 ### Prerequisites
-
 - Python 3.11+
 - [UV package manager](https://github.com/astral-sh/uv)
-- [Just command runner](https://github.com/casey/just) (optional but recommended)
-- PostgreSQL (optional, SQLite works for development)
-- Docker (optional, for local PostgreSQL)
+- [Just command runner](https://github.com/casey/just) (optional)
+- AWS S3 credentials
+- RunPod API key
 
 ### Installation
 
-1. **Install UV (if not already installed):**
-   ```bash
-   curl -LsSf https://astral.sh/uv/install.sh | sh
-   # or
-   pip install uv
-   ```
-
-2. **Clone and setup:**
-   ```bash
-   
-   # Install dependencies with UV
-   uv sync
-   
-   # Copy environment configuration
-   cp .env.example .env
-   # Edit .env with your credentials
-   ```
-
-3. **Start the server:**
-   ```bash
-   # Using Just (recommended)
-   just dev
-   
-   # Or manually
-   uv run python run.py
-   
-   # Or use uvicorn directly
-   uv run uvicorn main:app --host 0.0.0.0 --port 8000 --reload
-   ```
-
-### Quick Setup with Just
-
-If you have [Just](https://github.com/casey/just) installed:
-
 ```bash
-# Complete setup for new developers
-just setup
+# Install UV
+curl -LsSf https://astral.sh/uv/install.sh | sh
 
-# Start with PostgreSQL database
-just dev-full
+# Install dependencies
+uv sync
 
-# Or just start the API
+# Setup environment
+cp .env.example .env
+# Edit .env with your credentials
+
+# Start development server
 just dev
+# Or manually:
+uv run python run.py
 ```
 
 ## Configuration
 
-Edit `.env` file with your configuration:
-
+Edit `.env`:
 ```bash
 # Database
-DATABASE_URL=postgresql://user:password@localhost:5432/real_estate_pipeline
-REDIS_URL=redis://localhost:6379/0
+DATABASE_URL=sqlite:///./real_estate.db  # or PostgreSQL
 
 # AWS S3
-AWS_ACCESS_KEY_ID=your_access_key
-AWS_SECRET_ACCESS_KEY=your_secret_key
+AWS_ACCESS_KEY_ID=your_key
+AWS_SECRET_ACCESS_KEY=your_secret
 S3_BUCKET_VIDEOS=real-estate-videos
 S3_BUCKET_RESULTS=real-estate-results
 
 # RunPod
-RUNPOD_API_KEY=your_runpod_api_key
+RUNPOD_API_KEY=your_api_key
 RUNPOD_ENDPOINT_ID=your_endpoint_id
 
-# API Configuration
-DEBUG=true  # Set to false in production
-CORS_ORIGINS=http://localhost:3000,https://yourdomain.com
+# API
+DEBUG=true
+CORS_ORIGINS=http://localhost:3000
 ```
 
-## API Endpoints
+## API Usage
 
-### Job Management
-
-- `POST /api/v1/jobs/` - Create processing job with video uploads
-- `GET /api/v1/jobs/{job_id}` - Get job status and results
-- `GET /api/v1/jobs/` - List jobs with filtering
-- `DELETE /api/v1/jobs/{job_id}` - Cancel processing job
-
-### Health Monitoring
-
-- `GET /health/` - Basic health check
-- `GET /health/detailed` - Detailed health check with dependencies
-- `GET /health/readiness` - Kubernetes readiness probe
-- `GET /health/liveness` - Kubernetes liveness probe
-
-### Webhooks
-
-- `POST /webhook/runpod/{job_id}` - RunPod completion webhook
-
-## Usage Example
-
-### Creating a Processing Job
+### Create Analysis Job
 
 ```bash
 curl -X POST "http://localhost:8000/api/v1/jobs/" \
   -H "Content-Type: multipart/form-data" \
-  -F "files=@property_video1.mp4" \
-  -F "files=@property_video2.mp4" \
-  -F 'property_data={"property_type": "residential", "bedrooms": 3, "bathrooms": 2, "square_feet": 1500, "address": "123 Main St"}'
+  -F "files=@property_video.mp4" \
+  -F 'property_data={"property_type": "residential", "bedrooms": 3}'
 ```
 
-Response:
-```json
-{
-  "job_id": "123e4567-e89b-12d3-a456-426614174000",
-  "status": "processing",
-  "video_count": 2,
-  "estimated_completion": "2024-01-20T15:30:00"
-}
-```
-
-### Checking Job Status
+### Check Job Status
 
 ```bash
-curl "http://localhost:8000/api/v1/jobs/123e4567-e89b-12d3-a456-426614174000"
+curl "http://localhost:8000/api/v1/jobs/{job_id}"
 ```
 
-Response:
-```json
-{
-  "job_id": "123e4567-e89b-12d3-a456-426614174000",
-  "status": "completed",
-  "progress": 100,
-  "result_url": "https://s3.amazonaws.com/...",
-  "created_at": "2024-01-20T14:30:00",
-  "completed_at": "2024-01-20T15:25:00"
-}
-```
+## What It Does
+
+1. **Accepts video uploads** via REST API
+2. **Stores videos** in S3
+3. **Submits to RunPod** for BLIP-2 analysis
+4. **RunPod extracts frames** at 3 FPS and generates:
+   - Scene descriptions
+   - Room type identification  
+   - Feature detection
+5. **Returns results** with timestamped frame descriptions
 
 ## Project Structure
 
 ```
-backend/
-├── main.py              # FastAPI application entry point
-├── requirements.txt     # Python dependencies (no ML libraries)
-├── start.sh            # Startup script
-├── .env.example        # Environment configuration template
-├── api/                # API endpoints
-│   ├── health.py       # Health check endpoints
-│   ├── jobs.py         # Job management endpoints
-│   └── webhook.py      # RunPod webhook handlers
-├── database/           # Database layer
-│   ├── models.py       # SQLAlchemy models
-│   └── connection.py   # Database connection management
-├── services/           # External service integrations
-│   ├── s3_service.py   # AWS S3 operations
-│   └── runpod_service.py # RunPod API client
-└── utils/              # Utilities
-    ├── config.py       # Configuration management
-    └── validation.py   # Input validation
+├── main.py              # FastAPI application
+├── api/                 # API endpoints
+│   ├── health.py       # Health checks
+│   ├── jobs.py         # Job management
+│   └── webhook.py      # RunPod webhooks
+├── services/           # External services
+│   ├── s3_service.py   # S3 operations
+│   └── runpod_service.py # RunPod client
+├── database/           # Database models
+├── utils/              # Configuration
+└── runpod/            # RunPod container
+    └── handler.py     # BLIP-2 processing
 ```
 
-## Development
-
-### Development Setup
+## Development Commands
 
 ```bash
-# Install with dev dependencies
-uv sync --all-extras
-
-# Or just dev tools
-uv pip install -e ".[dev]"
-```
-
-### Code Quality
-
-```bash
-# With Just
+just dev          # Start development server
+just test-e2e     # Test end-to-end workflow
+just s3-setup     # Create S3 buckets
 just fmt          # Format code
 just lint         # Lint code
-just typecheck    # Type checking
-just check        # Run all quality checks
-
-# Or manually
-uv run ruff format .
-uv run ruff check .
-uv run mypy .
+just check        # Run all checks
 ```
-
-### Running Tests
-
-```bash
-# With Just
-just test         # Run tests
-just test-cov     # Run with coverage
-
-# Or manually
-uv sync --all-extras
-uv run pytest tests/
-```
-
-### Database Management
-
-```bash
-# With Just (PostgreSQL in Docker)
-just db-start     # Start PostgreSQL
-just db-stop      # Stop PostgreSQL
-just db-connect   # Connect to database
-just db-reset     # Reset database
-
-# Migrations with Just
-just migrate-init          # Initialize Alembic
-just migrate-create "message"  # Create migration
-just migrate-up            # Apply migrations
-just migrate-down          # Rollback migration
-```
-
-### Health Monitoring
-
-The API provides comprehensive health checks:
-
-- Database connectivity
-- S3 bucket access
-- RunPod API connectivity
-- Configuration validation
-
-Access health dashboard: `http://localhost:8000/health/detailed`
-
-## Production Deployment
-
-### Docker Deployment
-
-```dockerfile
-FROM python:3.11-slim
-
-WORKDIR /app
-COPY requirements.txt .
-RUN pip install -r requirements.txt
-
-COPY . .
-EXPOSE 8000
-
-CMD ["./start.sh"]
-```
-
-### Kubernetes Deployment
-
-The API includes readiness and liveness probes for Kubernetes:
-
-```yaml
-apiVersion: apps/v1
-kind: Deployment
-metadata:
-  name: real-estate-api
-spec:
-  replicas: 3
-  selector:
-    matchLabels:
-      app: real-estate-api
-  template:
-    spec:
-      containers:
-      - name: api
-        image: real-estate-api:latest
-        ports:
-        - containerPort: 8000
-        livenessProbe:
-          httpGet:
-            path: /health/liveness
-            port: 8000
-        readinessProbe:
-          httpGet:
-            path: /health/readiness
-            port: 8000
-```
-
-## Security Considerations
-
-- All file uploads are validated for type and size
-- Job IDs use UUIDs to prevent enumeration
-- CORS is configurable for cross-origin requests
-- No sensitive data is logged in production
-- Database connections use connection pooling
-- API includes request timing headers
-
-## Monitoring & Analytics
-
-The system tracks:
-- Job processing metrics
-- System health status
-- Performance statistics
-- Error rates and patterns
-
-Access via the database `job_metrics` and `system_health` tables.
-
-## Troubleshooting
-
-### Common Issues
-
-1. **Database connection failed**
-   - Check DATABASE_URL in .env
-   - Ensure database server is running
-
-2. **S3 upload errors**
-   - Verify AWS credentials and bucket permissions
-   - Check bucket names and regions
-
-3. **RunPod submission failed**
-   - Validate RUNPOD_API_KEY and RUNPOD_ENDPOINT_ID
-   - Ensure RunPod endpoint is deployed and active
-
-4. **Webhook not received**
-   - Check WEBHOOK_BASE_URL is accessible from RunPod
-   - Verify firewall and network configuration
-
-### Debug Mode
-
-Enable debug mode for detailed logging:
-
-```bash
-export DEBUG=true
-./start.sh
-```
-
-Debug mode enables:
-- Detailed SQL query logging  
-- API documentation at `/docs`
-- Enhanced error messages
-- Test webhook endpoints
 
 ## License
 
-This project is part of the Real Estate Video Processing Pipeline system.
+Private project for real estate video analysis.
