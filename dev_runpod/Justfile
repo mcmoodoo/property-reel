@@ -31,7 +31,7 @@ login:
         echo "Please set it with: export GHCR_PAT=your_github_personal_access_token"
         exit 1
     fi
-    echo "$GHCR_PAT" | podman login ghcr.io -u "{{env_var("USER", "your_github_username")}}" --password-stdin
+    echo "$GHCR_PAT" | podman login ghcr.io -u "$USER" --password-stdin
 
 # Get running pod ID
 get-running-pod-id:
