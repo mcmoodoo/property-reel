@@ -1,5 +1,37 @@
+# Justfile
+
+# change these to your GHCR namespace + repo
+IMAGE_NAME := "ghcr.io/mcmoodoo/shorts-maker"
+TAG        := "latest"
+
+# Base image reference (full path so Podman doesn't choke)
+BASE_IMAGE := "docker.io/runpod/pytorch:2.8.0-py3.11-cuda12.8.1-cudnn-devel-ubuntu22.04"
+
 default:
     @just --list
+
+# Build the image
+build:
+    podman build \
+      --build-arg BASE_IMAGE={{BASE_IMAGE}} \
+      -t {{IMAGE_NAME}}:{{TAG}} .
+
+# Push the image to GHCR
+push:
+    podman push {{IMAGE_NAME}}:{{TAG}}
+
+# Build + push
+publish: build push
+
+# Login to GHCR (needs GHCR_PAT in env)
+login:
+    #!/bin/bash
+    if [ -z "$GHCR_PAT" ]; then
+        echo "Error: GHCR_PAT environment variable not set"
+        echo "Please set it with: export GHCR_PAT=your_github_personal_access_token"
+        exit 1
+    fi
+    echo "$GHCR_PAT" | podman login ghcr.io -u "{{env_var("USER", "your_github_username")}}" --password-stdin
 
 # Get running pod ID
 get-running-pod-id:
@@ -11,10 +43,7 @@ connect host:
 
 # Create a default pod
 create-pod:
-    runpodctl create pod --gpuType "NVIDIA GeForce RTX 5090" --imageName runpod/pytorch:2.8.0-py3.11-cuda12.8.1-cudnn-devel-ubuntu22.04 --volumeSize 50 --name shorts-maker --ports 8888/http,22/tcp --startSSH --env "ACCEPT_EULA=true"
+    runpodctl create pod --gpuType "NVIDIA GeForce RTX 5090" --imageName {{IMAGE_NAME}}:{{TAG}} --volumeSize 50 --name shorts-maker --ports 8888/http,22/tcp --startSSH --env "ACCEPT_EULA=true"
 
 destroy-pod:
     runpodctl remove pod $(just get-running-pod-id)
-
-build-image:
-    podman build -t ghcr.io/mcmoodoo/shorts-maker:latest .
